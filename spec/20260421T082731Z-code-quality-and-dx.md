@@ -33,9 +33,9 @@ This task establishes linting, formatting, testing, and Git hooks to ensure code
 
 ## ✅ Task 3 — Import/order consistency
 
-- [ ] Install `eslint-plugin-perfectionist`
-- [ ] Configure import/order rules
-- [ ] Apply rules to existing code
+- [x] Install `eslint-plugin-perfectionist`
+- [x] Configure import/order rules
+- [x] Apply rules to existing code
 
 **Acceptance criteria:**
 - Imports are consistently ordered

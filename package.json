@@ -6,7 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "engines": {
-    "node": "22.11.0"
+    "node": "22.11.0",
+    "npm": "10.9.0"
   },
   "scripts": {
     "build": "nest build",
@@ -41,6 +42,7 @@
     "@types/supertest": "^7.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-perfectionist": "^2.11.0",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.0.0",
     "jest": "^30.0.0",
