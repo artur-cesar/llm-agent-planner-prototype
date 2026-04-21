@@ -1,101 +1,112 @@
-# Code Quality & Developer Experience Setup
+# Node.js 22.22.2 & npm 10.9.7 Migration
 
 ## Overview
-This task establishes linting, formatting, testing, and Git hooks to ensure code consistency and fast feedback during development.
+
+This task upgrades the project runtime from Node.js `22.11.0` to `22.22.2`, and npm from `10.9.0` to `10.9.7` (if npm is explicitly pinned).
+
+The goal is to remove compatibility friction with modern tooling while preserving strict reproducibility (`engine-strict=true`) and keeping changes minimal.
 
 ---
 
-## ✅ Task 1 — ESLint setup
+## ✅ Task 1 — Update Node.js version pin
 
-- [x] Install ESLint and required dependencies
-- [x] Configure ESLint for TypeScript
-- [x] Ensure lint runs without errors
-- [x] Add lint script to `package.json`
+- [ ] Update `.nvmrc` to `22.22.2`
+- [ ] Update `package.json` → `engines.node` to `22.22.2`
+- [ ] Search for any references to `22.11.0` in the repository
+- [ ] Update all relevant references to `22.22.2`
 
 **Acceptance criteria:**
-- `npm run lint` executes successfully
-- No lint errors in the project
+- All Node version references point to `22.22.2`
+- No remaining references to `22.11.0` where migration is required
 
 ---
 
-## ✅ Task 2 — Prettier setup
+## ✅ Task 2 — Update npm version pin (if applicable)
 
-- [x] Install Prettier
-- [x] Create Prettier config file
-- [x] Integrate Prettier with ESLint
-- [x] Add format script to `package.json`
+- [ ] Check if `package.json` includes `engines.npm`
+- [ ] If present, update from `10.9.0` to `10.9.7`
+- [ ] Check for `packageManager` field in `package.json`
+- [ ] If it references an older npm version, update it only if necessary
 
 **Acceptance criteria:**
-- `npm run format` formats files correctly
-- No conflicts between ESLint and Prettier
+- npm is updated to `10.9.7` if it was previously pinned
+- No unnecessary npm pinning introduced
 
 ---
 
-## ✅ Task 3 — Import/order consistency
+## ✅ Task 3 — Clean install with new runtime
 
-- [x] Install `eslint-plugin-perfectionist`
-- [x] Configure import/order rules
-- [x] Apply rules to existing code
+- [ ] Remove `node_modules`
+- [ ] Remove lockfile if required (`package-lock.json`)
+- [ ] Reinstall dependencies using Node `22.22.2`
+- [ ] Ensure installation works with `engine-strict=true`
 
 **Acceptance criteria:**
-- Imports are consistently ordered
-- Lint passes after applying rules
+- `npm install` runs successfully
+- No engine mismatch errors
+- Lockfile is consistent with the new runtime
 
 ---
 
-## ✅ Task 4 — Testing setup (Jest)
+## ✅ Task 4 — Fix dependency compatibility issues
 
-- [x] Ensure Jest is installed and configured
-- [x] Add a basic sanity test
-- [x] Verify tests run successfully
+- [ ] Run:
+  - `npm run lint`
+  - `npm run test`
+  - `npm run format`
+- [ ] Identify any failures caused by the Node/npm upgrade
+- [ ] Fix issues with minimal changes:
+  - update only necessary dependencies
+  - remove artificial pins introduced for Node `22.11.0`
+- [ ] Avoid broad or unnecessary dependency upgrades
 
 **Acceptance criteria:**
-- `npm run test` passes
-- At least one test exists and runs
+- All scripts pass without errors
+- No unnecessary dependency churn
+- Tooling works correctly under Node `22.22.2`
 
 ---
 
-## ✅ Task 5 — Husky (Git hooks)
+## ✅ Task 5 — Validate tooling compatibility
 
-- [x] Install Husky
-- [x] Initialize Husky
-- [x] Add pre-commit hook:
-  - run lint
-  - run format
-- [x] Add pre-push hook:
-  - run tests
+- [ ] Verify ESLint works correctly
+- [ ] Verify Jest works correctly
+- [ ] Verify Husky hooks still execute correctly
+- [ ] Verify TypeScript compiles without issues
 
 **Acceptance criteria:**
-- Hooks run automatically on commit and push
-- Commit fails if lint fails
-- Push fails if tests fail
+- All tooling behaves as expected
+- No runtime or config regressions
 
 ---
 
-## ✅ Task 6 — Package scripts cleanup
+## ✅ Task 6 — Update documentation
 
-- [x] Ensure scripts exist:
-  - lint
-  - lint:fix
-  - format
-  - test
-- [x] Ensure scripts are simple and consistent
+- [ ] Update `README.md`:
+  - Node version → `22.22.2`
+  - npm version → `10.9.7` (if relevant)
+- [ ] Ensure setup instructions reflect the new runtime
 
 **Acceptance criteria:**
-- All scripts run without errors
+- README reflects the correct versions
+- Instructions are accurate and minimal
 
 ---
 
 ## ✅ Task 7 — Final validation
 
-- [x] Run lint
-- [x] Run format
-- [x] Run tests
-- [x] Validate hooks manually
+- [ ] Run:
+  - `npm install`
+  - `npm run start:dev`
+  - `npm run lint`
+  - `npm run test`
+- [ ] Validate project boots and runs correctly
+- [ ] Ensure no regressions were introduced
 
 **Acceptance criteria:**
-- All commands pass
-- No regressions introduced
+- Project runs successfully under Node `22.22.2`
+- All scripts pass
+- No unexpected behavior changes
 
 ---
 
@@ -103,13 +114,13 @@ This task establishes linting, formatting, testing, and Git hooks to ensure code
 
 Each task should result in one commit:
 
-- chore(lint): configure eslint with typescript support
-- chore(format): configure prettier and integrate with eslint
-- chore(lint): add import ordering with eslint-plugin-perfectionist
-- chore(test): configure jest and add sanity test
-- chore(husky): setup git hooks for lint and test
-- chore(scripts): standardize npm scripts
+- chore(node): upgrade node version to 22.22.2
+- chore(npm): upgrade npm version to 10.9.7 (if pinned)
+- chore(deps): reinstall dependencies under node 22.22.2
+- chore(deps): fix compatibility issues after node upgrade
+- chore(tooling): validate tooling under new runtime
+- docs(readme): update node and npm versions
 
 Each commit must include:
 
-Co-authored-by: OpenAI Codex <codex@openai.com>
+Co-authored-by: Codex <open-api.com.br>
