@@ -80,11 +80,11 @@ This task is part of roadmap milestone progression for CI pipeline and must rema
 
 ## ✅ Task 5 — Keep workflow aligned with current roadmap stage
 
-- [ ] Do not add database services to CI
-- [ ] Do not add Docker Compose execution in this spec
-- [ ] Do not add deploy, release, or publish steps
-- [ ] Do not introduce coverage gates unless already required by the repository
-- [ ] Keep the pipeline compatible with the current maturity of the project
+- [x] Do not add database services to CI
+- [x] Do not add Docker Compose execution in this spec
+- [x] Do not add deploy, release, or publish steps
+- [x] Do not introduce coverage gates unless already required by the repository
+- [x] Keep the pipeline compatible with the current maturity of the project
 
 **Acceptance criteria:**
 - CI remains limited to repository health validation
