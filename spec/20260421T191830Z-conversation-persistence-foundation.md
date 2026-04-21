@@ -111,10 +111,10 @@ The conversation system introduced by this spec is an internal persistence found
 
 ## ✅ Task 6 — Register persistence structures in the application
 
-- [ ] Register entities in TypeORM configuration
-- [ ] Ensure compatibility with datasource and migrations
-- [ ] Verify application recognizes new persistence structures
-- [ ] Do not integrate with `/ask` in this spec
+- [x] Register entities in TypeORM configuration
+- [x] Ensure compatibility with datasource and migrations
+- [x] Verify application recognizes new persistence structures
+- [x] Do not integrate with `/ask` in this spec
 
 **Acceptance criteria:**
 - Entities are correctly registered
