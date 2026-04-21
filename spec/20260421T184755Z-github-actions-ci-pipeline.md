@@ -64,12 +64,12 @@ This task is part of roadmap milestone progression for CI pipeline and must rema
 
 ## ✅ Task 4 — Add core health checks
 
-- [ ] Run formatting validation using the existing formatting script in check mode if applicable
-- [ ] Run lint validation using the existing lint script
-- [ ] Run automated tests using the existing test script
-- [ ] Run e2e tests only if they are already stable and executable in CI without adding new infrastructure
-- [ ] Run application build using the existing build script
-- [ ] Reuse `package.json` scripts instead of duplicating raw commands when possible
+- [x] Run formatting validation using the existing formatting script in check mode if applicable
+- [x] Run lint validation using the existing lint script
+- [x] Run automated tests using the existing test script
+- [x] Run e2e tests only if they are already stable and executable in CI without adding new infrastructure
+- [x] Run application build using the existing build script
+- [x] Reuse `package.json` scripts instead of duplicating raw commands when possible
 
 **Acceptance criteria:**
 - CI validates formatting, linting, tests, and build as supported by the current project state
