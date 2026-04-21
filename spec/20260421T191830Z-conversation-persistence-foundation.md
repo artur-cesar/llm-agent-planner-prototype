@@ -97,10 +97,10 @@ The conversation system introduced by this spec is an internal persistence found
 
 ## ✅ Task 5 — Add internal service and helper support
 
-- [ ] Create internal services to support conversation persistence
-- [ ] Add helper files or types as needed (e.g. message role typing)
-- [ ] Use TypeORM standard repository injection (no custom repositories)
-- [ ] Keep services focused on persistence only
+- [x] Create internal services to support conversation persistence
+- [x] Add helper files or types as needed (e.g. message role typing)
+- [x] Use TypeORM standard repository injection (no custom repositories)
+- [x] Keep services focused on persistence only
 
 **Acceptance criteria:**
 - Services support future multi-turn operations
