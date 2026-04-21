@@ -57,12 +57,12 @@ This task establishes linting, formatting, testing, and Git hooks to ensure code
 
 ## ✅ Task 5 — Husky (Git hooks)
 
-- [ ] Install Husky
-- [ ] Initialize Husky
-- [ ] Add pre-commit hook:
+- [x] Install Husky
+- [x] Initialize Husky
+- [x] Add pre-commit hook:
   - run lint
   - run format
-- [ ] Add pre-push hook:
+- [x] Add pre-push hook:
   - run tests
 
 **Acceptance criteria:**
