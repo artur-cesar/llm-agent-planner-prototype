@@ -4,6 +4,11 @@ Study repository for building and iterating on LLM-based systems, including agen
 
 ## Setup
 
+Required runtime:
+
+- Node.js `22.22.2`
+- npm `10.9.7`
+
 ```bash
 nvm use
 npm install

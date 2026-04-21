@@ -181,3 +181,29 @@ This project builds upon lessons learned from the previous repository:
   - multiple tool calls in sequence
 - The architecture is clean, testable, and extensible
 - The repository serves as a strong technical reference for interviews and discussions
+
+---
+
+## 🔧 Cross-Cutting Tasks (Non-Milestone Work)
+
+These tasks are not tied to a specific milestone but are required to maintain project stability, tooling compatibility, and developer experience.
+
+They may be executed at any point in the roadmap when needed.
+
+Examples include:
+
+- Runtime upgrades (Node.js, npm)
+- Dependency compatibility fixes
+- Tooling adjustments (ESLint, Jest, Husky)
+- Security patches
+- Lockfile or environment corrections
+
+### Rules for Cross-Cutting Tasks:
+
+- Must be implemented via a dedicated feature spec
+- Must NOT mark any roadmap milestone as completed
+- Must NOT trigger execution of other roadmap steps
+- Must NOT introduce new product features
+- Must focus strictly on stability or compatibility
+
+These tasks exist outside the linear roadmap progression and should be treated as isolated improvements.
