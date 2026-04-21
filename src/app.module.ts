@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { ConversationsModule } from './conversations/conversations.module';
 import { Conversation } from './conversations/entities/conversation.entity';
 import { Message } from './conversations/entities/message.entity';
+import { LlmModule } from './llm/llm.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { Message } from './conversations/entities/message.entity';
       synchronize: false,
     }),
     ConversationsModule,
+    LlmModule,
   ],
   controllers: [AppController],
   providers: [AppService],

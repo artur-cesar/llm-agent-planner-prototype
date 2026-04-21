@@ -73,10 +73,10 @@ The `llm` layer introduced by this spec is responsible only for the application-
 
 ## ✅ Task 4 — Integrate LLM abstraction into /ask flow
 
-- [ ] Update the current `/ask` flow to depend on `LlmGateway`
-- [ ] Ensure assistant response generation goes through the abstraction
-- [ ] Keep integration minimal and aligned with the current endpoint behavior
-- [ ] Do not introduce planner or tool loop behavior in this spec
+- [x] Update the current `/ask` flow to depend on `LlmGateway`
+- [x] Ensure assistant response generation goes through the abstraction
+- [x] Keep integration minimal and aligned with the current endpoint behavior
+- [x] Do not introduce planner or tool loop behavior in this spec
 
 **Acceptance criteria:**
 - `/ask` uses `LlmGateway` for response generation
