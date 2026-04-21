@@ -74,12 +74,12 @@ This task establishes linting, formatting, testing, and Git hooks to ensure code
 
 ## ✅ Task 6 — Package scripts cleanup
 
-- [ ] Ensure scripts exist:
+- [x] Ensure scripts exist:
   - lint
   - lint:fix
   - format
   - test
-- [ ] Ensure scripts are simple and consistent
+- [x] Ensure scripts are simple and consistent
 
 **Acceptance criteria:**
 - All scripts run without errors
