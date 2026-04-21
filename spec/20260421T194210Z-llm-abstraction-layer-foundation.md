@@ -116,10 +116,10 @@ The `llm` layer introduced by this spec is responsible only for the application-
 
 ## ✅ Final validation
 
-- [ ] Run all relevant scripts
-- [ ] Confirm the project remains stable
-- [ ] Confirm the LLM abstraction layer is in place
-- [ ] Ensure checklist is fully marked
+- [x] Run all relevant scripts
+- [x] Confirm the project remains stable
+- [x] Confirm the LLM abstraction layer is in place
+- [x] Ensure checklist is fully marked
 
 **Acceptance criteria:**
 - All relevant scripts pass
