@@ -51,9 +51,9 @@ This spec must remain focused and must not introduce:
 
 ## ✅ Task 3 — Create dedicated TypeORM datasource
 
-- [ ] Create a standalone datasource file for migrations
-- [ ] Ensure compatibility with PostgreSQL
-- [ ] Keep datasource reusable and explicit
+- [x] Create a standalone datasource file for migrations
+- [x] Ensure compatibility with PostgreSQL
+- [x] Keep datasource reusable and explicit
 
 **Acceptance criteria:**
 - Datasource exists and is valid for migration usage
