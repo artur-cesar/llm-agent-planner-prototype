@@ -23,3 +23,6 @@ jobs:
 
       - name: Verify npm version
         run: test "$(npm --version)" = "10.9.7"
+
+      - name: Install dependencies
+        run: npm ci

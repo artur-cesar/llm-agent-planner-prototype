@@ -50,10 +50,10 @@ This task is part of roadmap milestone progression for CI pipeline and must rema
 
 ## ✅ Task 3 — Install dependencies reproducibly
 
-- [ ] Use `npm ci` instead of `npm install`
-- [ ] Ensure dependency installation respects the lockfile
-- [ ] Verify the install step is suitable for CI reproducibility
-- [ ] Keep install logic simple and deterministic
+- [x] Use `npm ci` instead of `npm install`
+- [x] Ensure dependency installation respects the lockfile
+- [x] Verify the install step is suitable for CI reproducibility
+- [x] Keep install logic simple and deterministic
 
 **Acceptance criteria:**
 - Dependencies are installed using `npm ci`
