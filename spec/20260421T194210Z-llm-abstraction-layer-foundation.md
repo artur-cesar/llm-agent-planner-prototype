@@ -101,10 +101,10 @@ The `llm` layer introduced by this spec is responsible only for the application-
 
 ## ✅ Task 6 — Validate LLM integration baseline
 
-- [ ] Run all relevant scripts affected by the change
-- [ ] Validate that the application still builds successfully
-- [ ] Validate that `/ask` works with the fake gateway
-- [ ] Fix only issues directly caused by this spec
+- [x] Run all relevant scripts affected by the change
+- [x] Validate that the application still builds successfully
+- [x] Validate that `/ask` works with the fake gateway
+- [x] Fix only issues directly caused by this spec
 
 **Acceptance criteria:**
 - Application builds successfully

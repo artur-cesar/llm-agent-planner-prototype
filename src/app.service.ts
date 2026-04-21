@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import { AskRequestDto } from './ask/dto/ask-request.dto';
-import { AskResponseDto } from './ask/dto/ask-response.dto';
-import { LlmGateway } from './llm/llm-gateway.interface';
+import type { AskRequestDto } from './ask/dto/ask-request.dto';
+import type { AskResponseDto } from './ask/dto/ask-response.dto';
+import type { LlmGateway } from './llm/llm-gateway.interface';
+
 import { LLM_GATEWAY } from './llm/llm.constants';
 
 @Injectable()

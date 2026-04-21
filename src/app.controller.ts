@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 
+import type { AskRequestDto } from './ask/dto/ask-request.dto';
+import type { AskResponseDto } from './ask/dto/ask-response.dto';
+
 import { AppService } from './app.service';
-import { AskRequestDto } from './ask/dto/ask-request.dto';
-import { AskResponseDto } from './ask/dto/ask-response.dto';
 
 @Controller()
 export class AppController {
