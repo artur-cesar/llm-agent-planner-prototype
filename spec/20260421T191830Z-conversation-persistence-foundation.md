@@ -83,10 +83,10 @@ The conversation system introduced by this spec is an internal persistence found
 
 ## ✅ Task 4 — Create migrations for conversation persistence
 
-- [ ] Add migration for `Conversation`
-- [ ] Add migration for `Message`
-- [ ] Ensure relationship between both tables is correctly represented
-- [ ] Keep migration scope limited to this spec
+- [x] Add migration for `Conversation`
+- [x] Add migration for `Message`
+- [x] Ensure relationship between both tables is correctly represented
+- [x] Keep migration scope limited to this spec
 
 **Acceptance criteria:**
 - Migration files exist and are valid
