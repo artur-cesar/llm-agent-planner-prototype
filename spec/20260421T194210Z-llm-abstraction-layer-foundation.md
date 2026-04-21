@@ -87,10 +87,10 @@ The `llm` layer introduced by this spec is responsible only for the application-
 
 ## ✅ Task 5 — Keep module boundaries explicit
 
-- [ ] Keep the `llm` folder focused on gateway/provider concerns only
-- [ ] Avoid moving planner, tool, or turn orchestration responsibilities into the `llm` layer
-- [ ] Add helper files or types only when directly required by the gateway abstraction
-- [ ] Keep naming and structure clear for future Anthropic implementation
+- [x] Keep the `llm` folder focused on gateway/provider concerns only
+- [x] Avoid moving planner, tool, or turn orchestration responsibilities into the `llm` layer
+- [x] Add helper files or types only when directly required by the gateway abstraction
+- [x] Keep naming and structure clear for future Anthropic implementation
 
 **Acceptance criteria:**
 - `llm` remains scoped to abstraction and provider implementation concerns
