@@ -67,12 +67,12 @@ The conversation system introduced by this spec is an internal persistence found
 
 ## ✅ Task 3 — Add explicit message role support
 
-- [ ] Define supported roles:
+- [x] Define supported roles:
   - `user`
   - `assistant`
   - `tool`
-- [ ] Implement roles using enum or equivalent explicit type
-- [ ] Ensure role is persisted consistently
+- [x] Implement roles using enum or equivalent explicit type
+- [x] Ensure role is persisted consistently
 
 **Acceptance criteria:**
 - Message roles are explicit and constrained

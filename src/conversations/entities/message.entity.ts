@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+import { MessageRole } from '../message-role.enum';
 import { Conversation } from './conversation.entity';
 
 @Entity('messages')
@@ -17,8 +18,8 @@ export class Message {
   @Column({ type: 'text' })
   content: string;
 
-  @Column({ type: 'varchar' })
-  role: string;
+  @Column({ enum: MessageRole, type: 'enum' })
+  role: MessageRole;
 
   @Column({ nullable: true, type: 'jsonb' })
   metadata: Record<string, unknown> | null;
