@@ -48,14 +48,14 @@ The conversation system introduced by this spec is an internal persistence found
 
 ## ✅ Task 2 — Create Message entity
 
-- [ ] Create a `Message` entity
-- [ ] Use a UUID primary key
-- [ ] Add `content` field (text)
-- [ ] Add `role` field
-- [ ] Add `metadata` field (JSON, nullable)
-- [ ] Add `createdAt` timestamp
-- [ ] Associate message with a conversation (many-to-one)
-- [ ] Ensure proper foreign key setup
+- [x] Create a `Message` entity
+- [x] Use a UUID primary key
+- [x] Add `content` field (text)
+- [x] Add `role` field
+- [x] Add `metadata` field (JSON, nullable)
+- [x] Add `createdAt` timestamp
+- [x] Associate message with a conversation (many-to-one)
+- [x] Ensure proper foreign key setup
 
 **Acceptance criteria:**
 - Message entity exists
