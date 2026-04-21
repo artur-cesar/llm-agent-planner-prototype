@@ -125,10 +125,10 @@ The conversation system introduced by this spec is an internal persistence found
 
 ## ✅ Task 7 — Validate persistence foundation
 
-- [ ] Run relevant scripts (build, lint, etc.)
-- [ ] Validate project builds successfully
-- [ ] Validate migration wiring
-- [ ] Fix only issues caused by this spec
+- [x] Run relevant scripts (build, lint, etc.)
+- [x] Validate project builds successfully
+- [x] Validate migration wiring
+- [x] Fix only issues caused by this spec
 
 **Acceptance criteria:**
 - Application builds successfully
