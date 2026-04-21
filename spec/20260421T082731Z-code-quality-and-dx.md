@@ -45,9 +45,9 @@ This task establishes linting, formatting, testing, and Git hooks to ensure code
 
 ## ✅ Task 4 — Testing setup (Jest)
 
-- [ ] Ensure Jest is installed and configured
-- [ ] Add a basic sanity test
-- [ ] Verify tests run successfully
+- [x] Ensure Jest is installed and configured
+- [x] Add a basic sanity test
+- [x] Verify tests run successfully
 
 **Acceptance criteria:**
 - `npm run test` passes
