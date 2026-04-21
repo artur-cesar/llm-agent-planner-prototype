@@ -20,10 +20,10 @@ This task establishes linting, formatting, testing, and Git hooks to ensure code
 
 ## ✅ Task 2 — Prettier setup
 
-- [ ] Install Prettier
-- [ ] Create Prettier config file
-- [ ] Integrate Prettier with ESLint
-- [ ] Add format script to `package.json`
+- [x] Install Prettier
+- [x] Create Prettier config file
+- [x] Integrate Prettier with ESLint
+- [x] Add format script to `package.json`
 
 **Acceptance criteria:**
 - `npm run format` formats files correctly
