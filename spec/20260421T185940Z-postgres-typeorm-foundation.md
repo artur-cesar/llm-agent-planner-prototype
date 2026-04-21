@@ -75,9 +75,9 @@ This spec must remain focused and must not introduce:
 
 ## ✅ Task 5 — Add environment configuration
 
-- [ ] Define required PostgreSQL environment variables
-- [ ] Ensure `.env` is the source of truth
-- [ ] Keep environment surface minimal
+- [x] Define required PostgreSQL environment variables
+- [x] Ensure `.env` is the source of truth
+- [x] Keep environment surface minimal
 
 **Acceptance criteria:**
 - Database configuration is environment-driven
