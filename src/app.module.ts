@@ -3,6 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ConversationsModule } from './conversations/conversations.module';
+import { Conversation } from './conversations/entities/conversation.entity';
+import { Message } from './conversations/entities/message.entity';
 
 @Module({
   imports: [
@@ -13,9 +16,10 @@ import { AppService } from './app.service';
       username: process.env.DATABASE_USER ?? 'postgres',
       password: process.env.DATABASE_PASSWORD ?? 'postgres',
       database: process.env.DATABASE_NAME ?? 'llm_agent_planner',
-      entities: [],
+      entities: [Conversation, Message],
       synchronize: false,
     }),
+    ConversationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
