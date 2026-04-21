@@ -175,9 +175,9 @@ Co-authored-by: OpenAI Codex <codex@openai.com>
 
 After completing all tasks and committing changes:
 
-- [ ] Push the branch to origin
-- [ ] Create a pull request using GitHub CLI (`gh pr create --fill`)
-- [ ] Manually edit the PR body to fully comply with:
+- [x] Push the branch to origin
+- [x] Create a pull request using GitHub CLI (`gh pr create --fill`)
+- [x] Manually edit the PR body to fully comply with:
   `.github/pull_request_template.md`
 
 **Acceptance criteria:**
