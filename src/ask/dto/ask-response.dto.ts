@@ -1,3 +1,3 @@
-export interface AskResponseDto {
+export class AskResponseDto {
   content: string;
 }
