@@ -36,10 +36,10 @@ Build a NestJS-based backend that:
 
 ### 🧱 2. Infrastructure & Persistence
 
-- [ ] Docker Compose setup
-- [ ] PostgreSQL integration
-- [ ] TypeORM configuration
-- [ ] Database connection validation
+- [x] Docker Compose setup
+- [x] PostgreSQL integration
+- [x] TypeORM configuration
+- [x] Database connection validation
 
 ---
 

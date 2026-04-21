@@ -133,10 +133,10 @@ This spec must remain focused and must not introduce:
 
 ## ✅ Final validation
 
-- [ ] Run all relevant scripts
-- [ ] Confirm project builds successfully
-- [ ] Confirm containers start correctly
-- [ ] Ensure checklist is fully marked
+- [x] Run all relevant scripts
+- [x] Confirm project builds successfully
+- [x] Confirm containers start correctly
+- [x] Ensure checklist is fully marked
 
 **Acceptance criteria:**
 - Application builds successfully
