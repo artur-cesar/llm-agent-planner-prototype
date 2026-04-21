@@ -30,7 +30,7 @@ Build a NestJS-based backend that:
 - [x] Node version pinning
 - [x] Environment configuration
 - [x] Code quality setup (ESLint, Prettier, Husky, Jest)
-- [ ] CI pipeline
+- [x] CI pipeline
 
 ---
 
