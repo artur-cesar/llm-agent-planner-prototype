@@ -88,10 +88,10 @@ This task establishes linting, formatting, testing, and Git hooks to ensure code
 
 ## ✅ Task 7 — Final validation
 
-- [ ] Run lint
-- [ ] Run format
-- [ ] Run tests
-- [ ] Validate hooks manually
+- [x] Run lint
+- [x] Run format
+- [x] Run tests
+- [x] Validate hooks manually
 
 **Acceptance criteria:**
 - All commands pass

@@ -1,0 +1,183 @@
+# LLM Order Planner Prototype — Master Roadmap
+
+## Overview
+
+This repository is part of a series of structured experiments exploring LLM-based application architectures.
+
+The goal is to evolve from a simple tool-calling system into a planner-based agent capable of multi-step reasoning and execution.
+
+This document acts as a **product-level roadmap**, guiding implementation across multiple feature specs.
+
+---
+
+## 🎯 High-Level Goal
+
+Build a NestJS-based backend that:
+
+- Supports multi-turn conversations
+- Integrates with LLM providers (starting with Anthropic)
+- Evolves from simple response generation to planner-based decision making
+- Demonstrates real-world agent execution patterns
+- Is production-structured (CI, linting, testing, observability, API docs)
+
+---
+
+## 🗺️ Milestones
+
+### ✅ 1. Project Foundation
+
+- [x] NestJS bootstrap
+- [x] Node version pinning
+- [x] Environment configuration
+- [x] Code quality setup (ESLint, Prettier, Husky, Jest)
+- [ ] CI pipeline
+
+---
+
+### 🧱 2. Infrastructure & Persistence
+
+- [ ] Docker Compose setup
+- [ ] PostgreSQL integration
+- [ ] TypeORM configuration
+- [ ] Database connection validation
+
+---
+
+### 💬 3. Conversation System
+
+- [ ] Conversation entity
+- [ ] Message entity
+- [ ] Persistence of multi-turn conversations
+- [ ] Message role support (user, assistant, tool)
+
+---
+
+### 🧠 4. LLM Abstraction Layer
+
+- [ ] Define `LlmGateway` interface
+- [ ] Implement Fake LLM
+- [ ] Integrate LLM into `/ask` flow
+
+---
+
+### 🌐 5. Real LLM Integration (Anthropic)
+
+- [ ] Implement Anthropic provider
+- [ ] Replace or extend Fake LLM usage
+- [ ] Validate real responses
+
+---
+
+### 🔁 6. Ask Endpoint (Core Flow)
+
+- [ ] Implement POST `/ask`
+- [ ] Persist user message
+- [ ] Generate assistant response
+- [ ] Persist assistant message
+- [ ] Support conversationId for multi-turn
+
+---
+
+### 🛠️ 7. Tooling Layer
+
+- [ ] Implement tool definitions
+- [ ] Implement tool executor
+- [ ] Add:
+  - getOrderStatus
+  - getOrderItems
+
+---
+
+### 🧩 8. Planner Introduction (Core Differentiator)
+
+- [ ] Introduce planner abstraction
+- [ ] Allow decision between:
+  - direct answer
+  - single tool call
+  - multiple tool calls
+
+---
+
+### 🔄 9. Planner Execution Loop
+
+- [ ] Implement execution loop:
+  - LLM decides action
+  - tool executes
+  - result feeds next step
+- [ ] Support multi-step reasoning
+
+---
+
+### 📊 10. Observability
+
+- [ ] Add structured logs
+- [ ] Log planner decisions
+- [ ] Log tool calls and responses
+
+---
+
+### 📚 11. API Documentation
+
+- [ ] Integrate OpenAPI
+- [ ] Add Swagger UI
+- [ ] Document `/ask`
+
+---
+
+## 📌 Execution Rules
+
+- Each milestone must be implemented through a dedicated **feature spec**
+- Feature specs must:
+  - follow structured template
+  - include checklist tasks
+  - define clear commit boundaries
+
+---
+
+## 🔁 Workflow
+
+1. Pick next incomplete milestone
+2. Create feature spec
+3. Execute via Codex
+4. Mark milestone as complete
+5. Move to next
+
+---
+
+## 🚫 Non-goals
+
+- Do not overengineer abstractions prematurely
+- Do not introduce dynamic plugin systems
+- Do not optimize before planner is working
+- Do not skip milestones
+
+---
+
+## 🧠 Key Learning Focus
+
+- LLM tool calling vs planner-based execution
+- Prompt influence vs system architecture
+- Multi-turn conversation persistence
+- Controlled agent execution loops
+- Trade-offs between simplicity and flexibility
+
+---
+
+## 📦 Relationship with Tool Caller Prototype
+
+This project builds upon lessons learned from the previous repository:
+
+- Tool-caller handled single tool per turn
+- This project introduces planning and orchestration
+- Demonstrates limitations of naive tool-calling approaches
+
+---
+
+## ✅ Definition of Success
+
+- The system can handle:
+  - multi-turn conversations
+  - multi-step reasoning
+  - multiple tool calls in sequence
+- The architecture is clean, testable, and extensible
+- The repository serves as a strong technical reference for interviews and discussions
