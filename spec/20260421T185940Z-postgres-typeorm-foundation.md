@@ -63,9 +63,9 @@ This spec must remain focused and must not introduce:
 
 ## ✅ Task 4 — Add migration commands
 
-- [ ] Add migration-related scripts to `package.json`
-- [ ] Ensure scripts reference the correct datasource
-- [ ] Keep command names clear and minimal
+- [x] Add migration-related scripts to `package.json`
+- [x] Ensure scripts reference the correct datasource
+- [x] Keep command names clear and minimal
 
 **Acceptance criteria:**
 - Migration commands are available via `package.json`
