@@ -59,10 +59,10 @@ The `llm` layer introduced by this spec is responsible only for the application-
 
 ## ✅ Task 3 — Add LLM module wiring
 
-- [ ] Create or update the `llm` module structure as needed
-- [ ] Register the `LlmGateway` binding using `FakeLlmGateway`
-- [ ] Ensure the application can inject the abstraction instead of a concrete implementation
-- [ ] Keep dependency wiring clear and minimal
+- [x] Create or update the `llm` module structure as needed
+- [x] Register the `LlmGateway` binding using `FakeLlmGateway`
+- [x] Ensure the application can inject the abstraction instead of a concrete implementation
+- [x] Keep dependency wiring clear and minimal
 
 **Acceptance criteria:**
 - The application can resolve `LlmGateway` through NestJS dependency injection
