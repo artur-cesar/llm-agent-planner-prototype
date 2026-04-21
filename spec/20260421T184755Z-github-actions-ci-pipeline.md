@@ -35,11 +35,11 @@ This task is part of roadmap milestone progression for CI pipeline and must rema
 
 ## ✅ Task 2 — Configure pinned runtime setup
 
-- [ ] Configure Node.js setup using version `22.22.2`
-- [ ] Ensure npm version `10.9.7` is used explicitly when necessary
-- [ ] If using a matrix, pin the exact Node.js version instead of broad aliases such as `22.x`
-- [ ] Avoid loose runtime versioning in the workflow
-- [ ] Enable dependency caching compatible with npm usage
+- [x] Configure Node.js setup using version `22.22.2`
+- [x] Ensure npm version `10.9.7` is used explicitly when necessary
+- [x] If using a matrix, pin the exact Node.js version instead of broad aliases such as `22.x`
+- [x] Avoid loose runtime versioning in the workflow
+- [x] Enable dependency caching compatible with npm usage
 
 **Acceptance criteria:**
 - CI uses Node.js `22.22.2`
