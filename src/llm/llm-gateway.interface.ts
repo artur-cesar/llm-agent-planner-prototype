@@ -7,5 +7,7 @@ export interface GenerateAnswerOutput {
 }
 
 export interface LlmGateway {
-  generateAnswer(input: GenerateAnswerInput): Promise<GenerateAnswerOutput>;
+  generateAnswer(
+    input: GenerateAnswerInput,
+  ): GenerateAnswerOutput | Promise<GenerateAnswerOutput>;
 }

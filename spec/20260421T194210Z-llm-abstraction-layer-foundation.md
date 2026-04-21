@@ -44,11 +44,11 @@ The `llm` layer introduced by this spec is responsible only for the application-
 
 ## ✅ Task 2 — Implement FakeLlmGateway
 
-- [ ] Create a `FakeLlmGateway` implementation under the `llm` module
-- [ ] Make the fake implementation deterministic and simple
-- [ ] Ensure the fake gateway satisfies the `LlmGateway` contract
-- [ ] Keep behavior appropriate for local development and controlled testing
-- [ ] Avoid encoding future planner behavior into the fake gateway
+- [x] Create a `FakeLlmGateway` implementation under the `llm` module
+- [x] Make the fake implementation deterministic and simple
+- [x] Ensure the fake gateway satisfies the `LlmGateway` contract
+- [x] Keep behavior appropriate for local development and controlled testing
+- [x] Avoid encoding future planner behavior into the fake gateway
 
 **Acceptance criteria:**
 - `FakeLlmGateway` exists and implements `LlmGateway`
