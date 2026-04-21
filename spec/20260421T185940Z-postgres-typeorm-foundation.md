@@ -87,23 +87,23 @@ This spec must remain focused and must not introduce:
 
 ## ✅ Task 6 — Create Docker Compose setup
 
-- [ ] Create `compose.yml`
-- [ ] Define service `llm-planner-database`:
+- [x] Create `compose.yml`
+- [x] Define service `llm-planner-database`:
   - use PostgreSQL image
   - define `container_name`
   - define named volume for data persistence
-- [ ] Define service `llm-planner-application`:
+- [x] Define service `llm-planner-application`:
   - build from local Dockerfile or use node base image
   - define `container_name`
   - mount project directory
   - mount named volume for `node_modules`
-- [ ] Use `.env` as the main environment source
-- [ ] Define `environment` section only for:
+- [x] Use `.env` as the main environment source
+- [x] Define `environment` section only for:
   - hostnames
   - ports
   - internal connectivity (even if duplicated from `.env`)
-- [ ] mount network and use it in both services
-- [ ] Ensure services can communicate via service name
+- [x] mount network and use it in both services
+- [x] Ensure services can communicate via service name
 
 **Acceptance criteria:**
 - `compose.yml` exists with two services:

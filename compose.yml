@@ -1,0 +1,45 @@
+services:
+  llm-planner-database:
+    image: postgres:17-alpine
+    container_name: llm-planner-database
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+      PGPORT: ${DATABASE_PORT}
+    ports:
+      - '${DATABASE_PORT}:${DATABASE_PORT}'
+    volumes:
+      - llm-planner-database-data:/var/lib/postgresql/data
+    networks:
+      - llm-planner-network
+
+  llm-planner-application:
+    image: node:22.22.2-alpine
+    container_name: llm-planner-application
+    working_dir: /app
+    command: sh -c "npm install && npm run start:dev"
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: llm-planner-database
+      DATABASE_PORT: ${DATABASE_PORT}
+      PORT: ${PORT}
+    ports:
+      - '${PORT}:${PORT}'
+    volumes:
+      - .:/app
+      - llm-planner-node-modules:/app/node_modules
+    depends_on:
+      - llm-planner-database
+    networks:
+      - llm-planner-network
+
+volumes:
+  llm-planner-database-data:
+  llm-planner-node-modules:
+
+networks:
+  llm-planner-network:
