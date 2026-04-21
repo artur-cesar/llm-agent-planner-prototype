@@ -4,7 +4,7 @@ import {
   GenerateAnswerInput,
   GenerateAnswerOutput,
   LlmGateway,
-} from './llm-gateway.interface';
+} from '../llm-gateway.interface';
 
 @Injectable()
 export class FakeLlmGateway implements LlmGateway {

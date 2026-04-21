@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { FakeLlmGateway } from './fake-llm.gateway';
+import { FakeLlmGateway } from './fake/fake-llm.gateway';
 import { LLM_GATEWAY } from './llm.constants';
 
 @Module({
