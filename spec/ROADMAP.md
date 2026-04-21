@@ -54,9 +54,9 @@ Build a NestJS-based backend that:
 
 ### 🧠 4. LLM Abstraction Layer
 
-- [ ] Define `LlmGateway` interface
-- [ ] Implement Fake LLM
-- [ ] Integrate LLM into `/ask` flow
+- [x] Define `LlmGateway` interface
+- [x] Implement Fake LLM
+- [x] Integrate LLM into `/ask` flow
 
 ---
 
