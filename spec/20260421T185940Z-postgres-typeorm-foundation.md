@@ -119,10 +119,10 @@ This spec must remain focused and must not introduce:
 
 ## ✅ Task 7 — Validate application ↔ database connection
 
-- [ ] Start services using Docker Compose
-- [ ] Ensure application boots successfully
-- [ ] Ensure TypeORM connects to PostgreSQL
-- [ ] Fix only issues directly related to connection
+- [x] Start services using Docker Compose
+- [x] Ensure application boots successfully
+- [x] Ensure TypeORM connects to PostgreSQL
+- [x] Fix only issues directly related to connection
 
 **Acceptance criteria:**
 - Application starts without crashing
