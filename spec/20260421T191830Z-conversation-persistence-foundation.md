@@ -140,10 +140,10 @@ The conversation system introduced by this spec is an internal persistence found
 
 ## ✅ Final validation
 
-- [ ] Run all relevant scripts
-- [ ] Confirm project stability
-- [ ] Confirm persistence foundation is in place
-- [ ] Ensure checklist is fully marked
+- [x] Run all relevant scripts
+- [x] Confirm project stability
+- [x] Confirm persistence foundation is in place
+- [x] Ensure checklist is fully marked
 
 **Acceptance criteria:**
 - All scripts pass

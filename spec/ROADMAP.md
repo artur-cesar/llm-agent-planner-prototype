@@ -45,10 +45,10 @@ Build a NestJS-based backend that:
 
 ### 💬 3. Conversation System
 
-- [ ] Conversation entity
-- [ ] Message entity
-- [ ] Persistence of multi-turn conversations
-- [ ] Message role support (user, assistant, tool)
+- [x] Conversation entity
+- [x] Message entity
+- [x] Persistence of multi-turn conversations
+- [x] Message role support (user, assistant, tool)
 
 ---
 
