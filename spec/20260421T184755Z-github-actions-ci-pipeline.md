@@ -95,10 +95,10 @@ This task is part of roadmap milestone progression for CI pipeline and must rema
 
 ## ✅ Task 6 — Validate CI readiness locally
 
-- [ ] Run all scripts referenced by the workflow locally when possible
-- [ ] Confirm the workflow maps to real project commands
-- [ ] Adjust workflow only as needed to match the existing repository scripts
-- [ ] Ensure no unrelated files are modified beyond CI-related scope
+- [x] Run all scripts referenced by the workflow locally when possible
+- [x] Confirm the workflow maps to real project commands
+- [x] Adjust workflow only as needed to match the existing repository scripts
+- [x] Ensure no unrelated files are modified beyond CI-related scope
 
 **Acceptance criteria:**
 - Workflow steps correspond to actual project commands
