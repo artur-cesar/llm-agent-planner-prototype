@@ -37,10 +37,10 @@ This spec must remain focused and must not introduce:
 
 ## ✅ Task 2 — Configure TypeORM in NestJS
 
-- [ ] Integrate TypeORM into the NestJS application
-- [ ] Configure PostgreSQL connection using environment variables
-- [ ] Keep configuration minimal and extendable
-- [ ] Do not introduce domain entities yet
+- [x] Integrate TypeORM into the NestJS application
+- [x] Configure PostgreSQL connection using environment variables
+- [x] Keep configuration minimal and extendable
+- [x] Do not introduce domain entities yet
 
 **Acceptance criteria:**
 - Application is ready to connect to PostgreSQL
