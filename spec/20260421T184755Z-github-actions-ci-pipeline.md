@@ -109,10 +109,10 @@ This task is part of roadmap milestone progression for CI pipeline and must rema
 
 ## ✅ Final validation
 
-- [ ] Run all relevant scripts
-- [ ] Confirm the project remains stable
-- [ ] Confirm the CI workflow is correctly added
-- [ ] Ensure checklist is fully marked
+- [x] Run all relevant scripts
+- [x] Confirm the project remains stable
+- [x] Confirm the CI workflow is correctly added
+- [x] Ensure checklist is fully marked
 
 **Acceptance criteria:**
 - All relevant scripts pass
