@@ -11,6 +11,7 @@ export class FakeLlmGateway implements LlmGateway {
   generateAnswer(input: GenerateAnswerInput): GenerateAnswerOutput {
     return {
       content: `Fake LLM response: ${input.prompt}`,
+      type: 'final_answer',
     };
   }
 }

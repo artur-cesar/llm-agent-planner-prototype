@@ -6,6 +6,7 @@ describe('FakeLlmGateway', () => {
 
     expect(gateway.generateAnswer({ prompt: 'test prompt' })).toEqual({
       content: 'Fake LLM response: test prompt',
+      type: 'final_answer',
     });
   });
 });

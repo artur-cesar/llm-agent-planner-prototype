@@ -28,6 +28,7 @@ describe('LlmModule', () => {
 
     expect(gateway.generateAnswer({ prompt: 'test' })).toEqual({
       content: 'Fake LLM response: test',
+      type: 'final_answer',
     });
   });
 

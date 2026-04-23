@@ -24,6 +24,7 @@ describe('AnthropicGateway', () => {
       gateway.generateAnswer({ prompt: 'Explain agents briefly.' }),
     ).resolves.toEqual({
       content: 'Hello from Claude.',
+      type: 'final_answer',
     });
 
     expect(create).toHaveBeenCalledWith({
@@ -58,6 +59,7 @@ describe('AnthropicGateway', () => {
 
     await expect(gateway.generateAnswer({ prompt: 'test' })).resolves.toEqual({
       content: 'First.\nSecond.',
+      type: 'final_answer',
     });
   });
 
@@ -77,6 +79,40 @@ describe('AnthropicGateway', () => {
 
     await expect(gateway.generateAnswer({ prompt: 'test' })).resolves.toEqual({
       content: '',
+      type: 'tool_call',
+      toolName: 'noop',
+      toolUseId: 'toolu_test',
+      arguments: {},
+    });
+  });
+
+  it('should map Anthropic tool use responses into the shared contract', async () => {
+    const create = jest.fn().mockResolvedValue({
+      content: [
+        {
+          citations: null,
+          text: 'Checking the order for you.',
+          type: 'text',
+        },
+        {
+          id: 'toolu_123',
+          input: { orderId: '123' },
+          name: 'getOrderStatus',
+          type: 'tool_use',
+        },
+      ] as unknown as ContentBlock[],
+    });
+
+    const gateway = createGateway(create);
+
+    await expect(
+      gateway.generateAnswer({ prompt: 'What is the status of order 123?' }),
+    ).resolves.toEqual({
+      arguments: { orderId: '123' },
+      content: 'Checking the order for you.',
+      toolName: 'getOrderStatus',
+      toolUseId: 'toolu_123',
+      type: 'tool_call',
     });
   });
 

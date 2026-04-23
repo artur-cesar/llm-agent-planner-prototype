@@ -51,9 +51,7 @@ export class AnthropicGateway implements LlmGateway {
       model,
     });
 
-    return {
-      content: this.extractText(response.content),
-    };
+    return this.mapResponse(response.content);
   }
 
   private getClient(): AnthropicClient {
@@ -86,5 +84,32 @@ export class AnthropicGateway implements LlmGateway {
       .map((block) => block.text)
       .join('\n')
       .trim();
+  }
+
+  private mapResponse(content: ContentBlock[]): GenerateAnswerOutput {
+    const toolUseBlock = content.find((block) => block.type === 'tool_use');
+
+    if (toolUseBlock?.type === 'tool_use') {
+      return {
+        arguments: this.normalizeToolArguments(toolUseBlock.input),
+        content: this.extractText(content),
+        toolName: toolUseBlock.name,
+        toolUseId: toolUseBlock.id,
+        type: 'tool_call',
+      };
+    }
+
+    return {
+      content: this.extractText(content),
+      type: 'final_answer',
+    };
+  }
+
+  private normalizeToolArguments(input: unknown): Record<string, unknown> {
+    if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+      return {};
+    }
+
+    return input as Record<string, unknown>;
   }
 }
