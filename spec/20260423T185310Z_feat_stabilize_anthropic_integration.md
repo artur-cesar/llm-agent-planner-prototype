@@ -37,11 +37,11 @@ This is a roadmap milestone task, not a cross-cutting stabilization task:
 
 ## ✅ Task 2 — Wire Anthropic into the LLM module
 
-- [ ] Update `llm.module.ts` to register Anthropic as a provider
-- [ ] Keep the fake gateway available for tests or controlled local usage
-- [ ] Define how the runtime chooses the active provider
-- [ ] Introduce or update provider selection constants/tokens in `llm.constants.ts`
-- [ ] Ensure `AskService` can use the selected provider without code changes
+- [x] Update `llm.module.ts` to register Anthropic as a provider
+- [x] Keep the fake gateway available for tests or controlled local usage
+- [x] Define how the runtime chooses the active provider
+- [x] Introduce or update provider selection constants/tokens in `llm.constants.ts`
+- [x] Ensure `AskService` can use the selected provider without code changes
 
 **Acceptance criteria:**
 - Anthropic can be used as the active runtime provider
