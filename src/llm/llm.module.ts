@@ -36,8 +36,11 @@ function assertAnthropicConfiguration(): void {
 
 @Module({
   providers: [
-    AnthropicGateway,
     FakeLlmGateway,
+    {
+      provide: AnthropicGateway,
+      useFactory: (): AnthropicGateway => new AnthropicGateway(),
+    },
     {
       provide: LLM_GATEWAY,
       inject: [FakeLlmGateway, AnthropicGateway],

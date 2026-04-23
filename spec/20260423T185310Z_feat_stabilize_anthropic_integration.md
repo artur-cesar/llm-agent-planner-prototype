@@ -82,9 +82,9 @@ This is a roadmap milestone task, not a cross-cutting stabilization task:
 
 ## ✅ Task 5 — Validate local developer setup
 
-- [ ] Add required Anthropic environment variables to local setup/docs as needed
-- [ ] Ensure the application fails clearly if Anthropic is selected but credentials are missing
-- [ ] Confirm local manual test flow for `/ask`
+- [x] Add required Anthropic environment variables to local setup/docs as needed
+- [x] Ensure the application fails clearly if Anthropic is selected but credentials are missing
+- [x] Confirm local manual test flow for `/ask`
 
 **Acceptance criteria:**
 - Developer setup is clear enough to run Anthropic locally

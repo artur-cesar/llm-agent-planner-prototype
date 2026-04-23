@@ -192,11 +192,11 @@ They may be executed at any point in the roadmap when needed.
 
 Examples include:
 
-- Runtime upgrades (Node.js, npm)
-- Dependency compatibility fixes
-- Tooling adjustments (ESLint, Jest, Husky)
-- Security patches
-- Lockfile or environment corrections
+- [x] Runtime upgrades (Node.js, npm)
+- [x] Dependency compatibility fixes
+- [x] Tooling adjustments (ESLint, Jest, Husky)
+- [x] Security patches
+- [x] Lockfile or environment corrections
 
 ### Rules for Cross-Cutting Tasks:
 
