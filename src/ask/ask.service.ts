@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 
 import type { LlmGateway } from '../llm/llm-gateway.interface';
 import type { AskRequestDto } from './dto/ask-request.dto';
@@ -14,6 +14,10 @@ export class AskService {
   ) {}
 
   async ask(input: AskRequestDto): Promise<AskResponseDto> {
+    if (input?.prompt === undefined) {
+      throw new BadRequestException('prompt is required.');
+    }
+
     const answer = await this.llmGateway.generateAnswer({
       prompt: input.prompt,
     });

@@ -52,10 +52,10 @@ This is a roadmap milestone task, not a cross-cutting stabilization task:
 
 ## ✅ Task 3 — Update Ask flow to use real LLM responses
 
-- [ ] Ensure `/ask` works with Anthropic as the active provider
-- [ ] Replace fake-only runtime behavior with real provider execution
-- [ ] Preserve the current response DTO contract
-- [ ] Validate that user input is passed through the real gateway and a real model response is returned
+- [x] Ensure `/ask` works with Anthropic as the active provider
+- [x] Replace fake-only runtime behavior with real provider execution
+- [x] Preserve the current response DTO contract
+- [x] Validate that user input is passed through the real gateway and a real model response is returned
 
 **Acceptance criteria:**
 - Calling `POST /ask` with Anthropic configured returns a real LLM response

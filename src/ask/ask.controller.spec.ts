@@ -33,4 +33,10 @@ describe('AskController', () => {
       content: 'Fake LLM response: test',
     });
   });
+
+  it('should reject requests without prompt', async () => {
+    await expect(
+      askController.ask(undefined as unknown as { prompt: string }),
+    ).rejects.toThrow('prompt is required.');
+  });
 });
