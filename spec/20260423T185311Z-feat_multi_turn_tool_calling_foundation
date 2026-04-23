@@ -51,7 +51,7 @@ This feature is needed before planner introduction because planner work depends 
 
 ## ✅ Task 2 — Add tool definitions and tool executor
 
-- [ ] Create tool definition types under a dedicated `tools/` area
+- [x] Create tool definition types under a dedicated `tools/` area
 - [ ] Implement tool definitions for:
   - `getOrderStatus`
   - `getOrderItems`
@@ -59,11 +59,11 @@ This feature is needed before planner introduction because planner work depends 
   - name
   - description
   - input schema
-- [ ] Implement `ToolExecutorService`
-- [ ] Support explicit dispatch for:
+- [x] Implement `ToolExecutorService`
+- [x] Support explicit dispatch for:
   - `getOrderStatus`
   - `getOrderItems`
-- [ ] Reuse the existing mocked `OrderRepository`
+- [x] Reuse the existing mocked `OrderRepository`
 
 **Acceptance criteria:**
 - Tool definitions exist and are structured consistently

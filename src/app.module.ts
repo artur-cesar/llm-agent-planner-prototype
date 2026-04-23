@@ -9,6 +9,7 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { Conversation } from './conversations/entities/conversation.entity';
 import { Message } from './conversations/entities/message.entity';
 import { LlmModule } from './llm/llm.module';
+import { ToolsModule } from './tools/tools.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { LlmModule } from './llm/llm.module';
     }),
     ConversationsModule,
     LlmModule,
+    ToolsModule,
   ],
   controllers: [AppController, AskController],
   providers: [AppService, AskService],
