@@ -66,12 +66,12 @@ This is a roadmap milestone task, not a cross-cutting stabilization task:
 
 ## ✅ Task 4 — Add provider-specific tests
 
-- [ ] Add unit tests for `AnthropicGateway`
-- [ ] Mock Anthropic SDK interactions in tests
-- [ ] Cover successful text response mapping
-- [ ] Cover safe fallback behavior when Anthropic returns unexpected content
-- [ ] Keep existing fake gateway tests working
-- [ ] Ensure no real external API call is performed in automated tests
+- [x] Add unit tests for `AnthropicGateway`
+- [x] Mock Anthropic SDK interactions in tests
+- [x] Cover successful text response mapping
+- [x] Cover safe fallback behavior when Anthropic returns unexpected content
+- [x] Keep existing fake gateway tests working
+- [x] Ensure no real external API call is performed in automated tests
 
 **Acceptance criteria:**
 - Anthropic gateway behavior is covered by automated tests
