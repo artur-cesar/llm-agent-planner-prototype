@@ -1,6 +1,17 @@
-import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class AskRequestDto {
+  @IsOptional()
+  @IsUUID()
+  conversationId?: string;
+
   @IsString()
   @IsNotEmpty()
   @MinLength(3)

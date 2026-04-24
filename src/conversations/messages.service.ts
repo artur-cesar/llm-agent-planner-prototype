@@ -25,7 +25,7 @@ export class MessagesService {
 
   async findByConversationId(conversationId: string): Promise<Message[]> {
     return this.messagesRepository.find({
-      order: { createdAt: 'ASC' },
+      order: { createdAt: 'ASC', id: 'ASC' },
       where: { conversationId },
     });
   }

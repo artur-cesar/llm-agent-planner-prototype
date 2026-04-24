@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Headers, Post } from '@nestjs/common';
 
 import { AskService } from './ask.service';
 import { AskRequestDto } from './dto/ask-request.dto';
@@ -9,7 +9,10 @@ export class AskController {
   constructor(private readonly askService: AskService) {}
 
   @Post()
-  ask(@Body() input: AskRequestDto): Promise<AskResponseDto> {
-    return this.askService.ask(input);
+  ask(
+    @Body() input: AskRequestDto,
+    @Headers('x-user-id') userId?: string,
+  ): Promise<AskResponseDto> {
+    return this.askService.ask(input, userId);
   }
 }
