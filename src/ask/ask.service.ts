@@ -38,17 +38,27 @@ export class AskService {
       throw new BadRequestException('prompt is required.');
     }
 
+    /**
+     * find a conversation or create, failing if nothing was found for the
+     * given conversationId
+     */
     const conversation = await this.resolveConversation(
       input.conversationId,
       userId,
     );
 
+    /**
+     * Create the new prompt
+     */
     await this.messagesService.create({
       content: input.prompt,
       conversationId: conversation.id,
       role: MessageRole.User,
     });
 
+    /**
+     * Consolidate the conversation with all messages
+     */
     const messageHistory = await this.messagesService.findByConversationId(
       conversation.id,
     );
@@ -58,6 +68,10 @@ export class AskService {
       tools: toolDefinitions,
     });
 
+    /**
+     * Decides what to do with the llm answer:
+     * Returns final answer or execute tools.
+     */
     const finalAnswer = await this.resolveAnswer(answer, conversation.id);
 
     return {
