@@ -1,5 +1,6 @@
 import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages';
 
+import { toolDefinitions } from '../../tools/tool-definitions';
 import { AnthropicGateway } from './anthropic.gateway';
 import { AnthropicClient } from './types';
 
@@ -21,7 +22,10 @@ describe('AnthropicGateway', () => {
     });
 
     await expect(
-      gateway.generateAnswer({ prompt: 'Explain agents briefly.' }),
+      gateway.generateAnswer({
+        messages: [{ content: 'Explain agents briefly.', role: 'user' }],
+        tools: toolDefinitions,
+      }),
     ).resolves.toEqual({
       content: 'Hello from Claude.',
       type: 'final_answer',
@@ -36,6 +40,40 @@ describe('AnthropicGateway', () => {
         },
       ],
       model: 'claude-sonnet-4-20250514',
+      tools: [
+        {
+          description:
+            'Get the current status of a customer order by order ID.',
+          input_schema: {
+            additionalProperties: false,
+            properties: {
+              orderId: {
+                description: 'The order identifier to look up.',
+                type: 'string',
+              },
+            },
+            required: ['orderId'],
+            type: 'object',
+          },
+          name: 'getOrderStatus',
+        },
+        {
+          description:
+            'Get the list of items associated with an order by order ID.',
+          input_schema: {
+            additionalProperties: false,
+            properties: {
+              orderId: {
+                description: 'The order identifier to inspect.',
+                type: 'string',
+              },
+            },
+            required: ['orderId'],
+            type: 'object',
+          },
+          name: 'getOrderItems',
+        },
+      ],
     });
   });
 
@@ -57,10 +95,12 @@ describe('AnthropicGateway', () => {
 
     const gateway = createGateway(create);
 
-    await expect(gateway.generateAnswer({ prompt: 'test' })).resolves.toEqual({
-      content: 'First.\nSecond.',
-      type: 'final_answer',
-    });
+    await expect(
+      gateway.generateAnswer({
+        messages: [{ content: 'test', role: 'user' }],
+        tools: [],
+      }),
+    ).resolves.toEqual({ content: 'First.\nSecond.', type: 'final_answer' });
   });
 
   it('should safely fallback when Anthropic returns no text blocks', async () => {
@@ -77,12 +117,17 @@ describe('AnthropicGateway', () => {
 
     const gateway = createGateway(create);
 
-    await expect(gateway.generateAnswer({ prompt: 'test' })).resolves.toEqual({
+    await expect(
+      gateway.generateAnswer({
+        messages: [{ content: 'test', role: 'user' }],
+        tools: [],
+      }),
+    ).resolves.toEqual({
+      arguments: {},
       content: '',
-      type: 'tool_call',
       toolName: 'noop',
       toolUseId: 'toolu_test',
-      arguments: {},
+      type: 'tool_call',
     });
   });
 
@@ -106,7 +151,12 @@ describe('AnthropicGateway', () => {
     const gateway = createGateway(create);
 
     await expect(
-      gateway.generateAnswer({ prompt: 'What is the status of order 123?' }),
+      gateway.generateAnswer({
+        messages: [
+          { content: 'What is the status of order 123?', role: 'user' },
+        ],
+        tools: toolDefinitions,
+      }),
     ).resolves.toEqual({
       arguments: { orderId: '123' },
       content: 'Checking the order for you.',
@@ -127,10 +177,90 @@ describe('AnthropicGateway', () => {
       model: 'claude-sonnet-4-20250514',
     });
 
-    await expect(gateway.generateAnswer({ prompt: 'test' })).rejects.toThrow(
+    await expect(
+      gateway.generateAnswer({
+        messages: [{ content: 'test', role: 'user' }],
+        tools: [],
+      }),
+    ).rejects.toThrow(
       'ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic.',
     );
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('should map persisted assistant tool calls and tool results into Anthropic messages', async () => {
+    const create = jest.fn().mockResolvedValue({
+      content: [
+        {
+          citations: null,
+          text: 'Order 123 is currently PAID.',
+          type: 'text',
+        },
+      ],
+    });
+
+    const gateway = createGateway(create);
+
+    await expect(
+      gateway.generateAnswer({
+        messages: [
+          { content: 'What is the status of order 123?', role: 'user' },
+          {
+            arguments: { orderId: '123' },
+            content: 'Checking the order for you.',
+            role: 'assistant',
+            toolName: 'getOrderStatus',
+            toolUseId: 'toolu_123',
+          },
+          {
+            content: '{"orderId":"123","status":"PAID"}',
+            role: 'tool',
+            toolName: 'getOrderStatus',
+            toolUseId: 'toolu_123',
+          },
+        ],
+        tools: toolDefinitions,
+      }),
+    ).resolves.toEqual({
+      content: 'Order 123 is currently PAID.',
+      type: 'final_answer',
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          {
+            content: 'What is the status of order 123?',
+            role: 'user',
+          },
+          {
+            content: [
+              {
+                text: 'Checking the order for you.',
+                type: 'text',
+              },
+              {
+                id: 'toolu_123',
+                input: { orderId: '123' },
+                name: 'getOrderStatus',
+                type: 'tool_use',
+              },
+            ],
+            role: 'assistant',
+          },
+          {
+            content: [
+              {
+                content: '{"orderId":"123","status":"PAID"}',
+                tool_use_id: 'toolu_123',
+                type: 'tool_result',
+              },
+            ],
+            role: 'user',
+          },
+        ],
+      }),
+    );
   });
 });
 

@@ -3,11 +3,13 @@ import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages';
 import Anthropic from '@anthropic-ai/sdk';
 import { Injectable } from '@nestjs/common';
 
+import type { ToolDefinition } from '../../tools/tool-definition.interface';
 import type { AnthropicClient, AnthropicGatewayOptions } from './types';
 
 import {
   GenerateAnswerInput,
   GenerateAnswerOutput,
+  LlmMessage,
   LlmGateway,
 } from '../llm-gateway.interface';
 
@@ -42,13 +44,9 @@ export class AnthropicGateway implements LlmGateway {
 
     const response = await client.messages.create({
       max_tokens: this.maxTokens,
-      messages: [
-        {
-          content: input.prompt,
-          role: 'user',
-        },
-      ],
+      messages: input.messages.map((message) => this.mapMessage(message)),
       model,
+      tools: input.tools.map((tool) => this.mapToolDefinition(tool)),
     });
 
     return this.mapResponse(response.content);
@@ -84,6 +82,71 @@ export class AnthropicGateway implements LlmGateway {
       .map((block) => block.text)
       .join('\n')
       .trim();
+  }
+
+  private mapMessage(message: LlmMessage) {
+    if (message.role === 'tool') {
+      return {
+        content: [
+          {
+            content: message.content,
+            tool_use_id: message.toolUseId ?? '',
+            type: 'tool_result' as const,
+          },
+        ],
+        role: 'user' as const,
+      };
+    }
+
+    if (
+      message.role === 'assistant' &&
+      message.toolName !== null &&
+      message.toolName !== undefined &&
+      message.toolUseId !== null &&
+      message.toolUseId !== undefined
+    ) {
+      const content: Array<
+        | { text: string; type: 'text' }
+        | {
+            id: string;
+            input: Record<string, unknown>;
+            name: string;
+            type: 'tool_use';
+          }
+      > = [];
+
+      if (message.content.trim() !== '') {
+        content.push({
+          text: message.content,
+          type: 'text',
+        });
+      }
+
+      content.push({
+        id: message.toolUseId,
+        input: message.arguments ?? {},
+        name: message.toolName,
+        type: 'tool_use',
+      });
+
+      return {
+        content,
+        role: 'assistant' as const,
+      };
+    }
+
+    return {
+      content: message.content,
+      role: message.role,
+    };
+  }
+
+  private mapToolDefinition(tool: ToolDefinition) {
+    return {
+      description: tool.description,
+      input_schema: tool.inputSchema,
+      name: tool.name,
+    };
   }
 
   private mapResponse(content: ContentBlock[]): GenerateAnswerOutput {

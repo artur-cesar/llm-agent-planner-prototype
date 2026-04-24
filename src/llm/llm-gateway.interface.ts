@@ -1,5 +1,18 @@
+import type { ToolDefinition } from '../tools/tool-definition.interface';
+
+export type LlmMessageRole = 'assistant' | 'tool' | 'user';
+
+export interface LlmMessage {
+  arguments?: Record<string, unknown> | null;
+  content: string;
+  role: LlmMessageRole;
+  toolName?: string | null;
+  toolUseId?: string | null;
+}
+
 export interface GenerateAnswerInput {
-  prompt: string;
+  messages: LlmMessage[];
+  tools: ToolDefinition[];
 }
 
 export interface GenerateAnswerFinalResponse {

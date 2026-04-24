@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 
 import type { LlmGateway } from './llm-gateway.interface';
 
+import { toolDefinitions } from '../tools/tool-definitions';
 import { LLM_GATEWAY } from './llm.constants';
 import { LlmModule } from './llm.module';
 
@@ -26,7 +27,12 @@ describe('LlmModule', () => {
 
     const gateway = moduleRef.get<LlmGateway>(LLM_GATEWAY);
 
-    expect(gateway.generateAnswer({ prompt: 'test' })).toEqual({
+    expect(
+      gateway.generateAnswer({
+        messages: [{ content: 'test', role: 'user' }],
+        tools: toolDefinitions,
+      }),
+    ).toEqual({
       content: 'Fake LLM response: test',
       type: 'final_answer',
     });
