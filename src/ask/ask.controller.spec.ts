@@ -1,42 +1,40 @@
-import { Test, TestingModule } from '@nestjs/testing';
-
-import type { LlmGateway } from '../llm/llm-gateway.interface';
-
-import { LLM_GATEWAY } from '../llm/llm.constants';
 import { AskController } from './ask.controller';
 import { AskService } from './ask.service';
 
 describe('AskController', () => {
   let askController: AskController;
+  let askService: jest.Mocked<AskService>;
 
-  beforeEach(async () => {
-    const llmGateway: LlmGateway = {
-      generateAnswer: () => ({ content: 'Fake LLM response: test' }),
-    };
+  beforeEach(() => {
+    askService = {
+      ask: jest.fn(),
+    } as unknown as jest.Mocked<AskService>;
 
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [AskController],
-      providers: [
-        AskService,
-        {
-          provide: LLM_GATEWAY,
-          useValue: llmGateway,
-        },
-      ],
-    }).compile();
-
-    askController = module.get<AskController>(AskController);
+    askController = new AskController(askService);
   });
 
   it('should return a generated answer', async () => {
-    await expect(askController.ask({ prompt: 'test' })).resolves.toEqual({
+    askService.ask.mockResolvedValue({
       content: 'Fake LLM response: test',
+      conversationId: 'conversation-id',
     });
+
+    await expect(
+      askController.ask({ prompt: 'test' }, 'user-id'),
+    ).resolves.toEqual({
+      content: 'Fake LLM response: test',
+      conversationId: 'conversation-id',
+    });
+    expect(askService.ask.mock.calls).toEqual([
+      [{ prompt: 'test' }, 'user-id'],
+    ]);
   });
 
   it('should reject requests without prompt', async () => {
-    await expect(
-      askController.ask(undefined as unknown as { prompt: string }),
-    ).rejects.toThrow('prompt is required.');
+    askService.ask.mockRejectedValue(new Error('prompt is required.'));
+
+    await expect(askController.ask(undefined as never)).rejects.toThrow(
+      'prompt is required.',
+    );
   });
 });
