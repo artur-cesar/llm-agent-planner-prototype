@@ -31,10 +31,10 @@ This feature is needed before planner introduction because planner work depends 
 ## ✅ Task 1 — Introduce a shared LLM response contract for tool calling
 
 - [x] Define a shared internal LLM response contract that both gateways must return
-- [ ] Support at least:
+- [x] Support at least:
   - `final_answer`
   - `tool_call`
-- [ ] Include fields needed for tool execution, such as:
+- [x] Include fields needed for tool execution, such as:
   - `content`
   - `toolName`
   - `toolUseId` (if applicable)
@@ -52,10 +52,10 @@ This feature is needed before planner introduction because planner work depends 
 ## ✅ Task 2 — Add tool definitions and tool executor
 
 - [x] Create tool definition types under a dedicated `tools/` area
-- [ ] Implement tool definitions for:
+- [x] Implement tool definitions for:
   - `getOrderStatus`
   - `getOrderItems`
-- [ ] Ensure each tool definition includes:
+- [x] Ensure each tool definition includes:
   - name
   - description
   - input schema
@@ -75,19 +75,19 @@ This feature is needed before planner introduction because planner work depends 
 
 ## ✅ Task 3 — Persist conversations and messages in `/ask`
 
-- [ ] Update `/ask` request DTO to support:
+- [x] Update `/ask` request DTO to support:
   - `prompt: string`
   - `conversationId?: string`
-- [ ] Update `/ask` response DTO to return:
+- [x] Update `/ask` response DTO to return:
   - `conversationId`
   - `content`
-- [ ] If `conversationId` is not provided:
+- [x] If `conversationId` is not provided:
   - create a new conversation
-- [ ] If `conversationId` is provided:
+- [x] If `conversationId` is provided:
   - load the conversation
-- [ ] Persist incoming user message
-- [ ] Persist assistant final answers
-- [ ] Keep message ordering correct and stable
+- [x] Persist incoming user message
+- [x] Persist assistant final answers
+- [x] Keep message ordering correct and stable
 
 **Acceptance criteria:**
 - `/ask` supports both new and existing conversations
@@ -99,11 +99,11 @@ This feature is needed before planner introduction because planner work depends 
 
 ## ✅ Task 4 — Build multi-turn conversation context for the LLM
 
-- [ ] Load persisted message history for a conversation
-- [ ] Convert persisted messages into the LLM message format
-- [ ] Include the current user message in the next LLM request
-- [ ] Ensure message roles are mapped correctly
-- [ ] Preserve role ordering and turn continuity
+- [x] Load persisted message history for a conversation
+- [x] Convert persisted messages into the LLM message format
+- [x] Include the current user message in the next LLM request
+- [x] Ensure message roles are mapped correctly
+- [x] Preserve role ordering and turn continuity
 
 **Acceptance criteria:**
 - LLM receives the full persisted context needed for multi-turn replies
@@ -114,18 +114,18 @@ This feature is needed before planner introduction because planner work depends 
 
 ## ✅ Task 5 — Pass tools to the LLM and support tool-calling flow
 
-- [ ] Pass tool definitions to the active LLM gateway
-- [ ] Ensure both Fake and Anthropic gateways can receive tools
-- [ ] If the LLM returns `final_answer`:
+- [x] Pass tool definitions to the active LLM gateway
+- [x] Ensure both Fake and Anthropic gateways can receive tools
+- [x] If the LLM returns `final_answer`:
   - persist assistant message
   - return response
-- [ ] If the LLM returns `tool_call`:
+- [x] If the LLM returns `tool_call`:
   - execute the requested tool
   - persist tool-related messages as needed
   - call the LLM again with updated context
   - persist final assistant response
   - return response
-- [ ] Keep the flow simple and linear for now
+- [x] Keep the flow simple and linear for now
 
 **Acceptance criteria:**
 - Tool definitions are available to the LLM
@@ -137,11 +137,11 @@ This feature is needed before planner introduction because planner work depends 
 
 ## ✅ Task 6 — Support clarification-based multi-turn behavior
 
-- [ ] Ensure the system can respond directly when the order ID is missing
-- [ ] Persist the assistant clarification message
-- [ ] On the next user turn, reuse the persisted conversation context
-- [ ] Allow the LLM to infer that the follow-up prompt answers the previous clarification
-- [ ] Validate flows such as:
+- [x] Ensure the system can respond directly when the order ID is missing
+- [x] Persist the assistant clarification message
+- [x] On the next user turn, reuse the persisted conversation context
+- [x] Allow the LLM to infer that the follow-up prompt answers the previous clarification
+- [x] Validate flows such as:
   - user asks for order status without ID
   - assistant asks which order
   - user provides order ID
@@ -156,15 +156,15 @@ This feature is needed before planner introduction because planner work depends 
 
 ## ✅ Task 7 — Add and update tests
 
-- [ ] Add/update tests for DTO and `/ask` flow
-- [ ] Cover direct answer flow
-- [ ] Cover multi-turn clarification flow
-- [ ] Cover tool call flow for:
+- [x] Add/update tests for DTO and `/ask` flow
+- [x] Cover direct answer flow
+- [x] Cover multi-turn clarification flow
+- [x] Cover tool call flow for:
   - `getOrderStatus`
   - `getOrderItems`
-- [ ] Cover unsupported tool behavior where relevant
-- [ ] Keep Fake gateway tests passing
-- [ ] Keep Anthropic gateway tests aligned with the shared contract
+- [x] Cover unsupported tool behavior where relevant
+- [x] Keep Fake gateway tests passing
+- [x] Keep Anthropic gateway tests aligned with the shared contract
 
 **Acceptance criteria:**
 - Main ask flow behaviors are covered
@@ -175,13 +175,13 @@ This feature is needed before planner introduction because planner work depends 
 
 ## ✅ Final validation
 
-- [ ] Run all relevant scripts
-- [ ] Confirm the project remains stable
-- [ ] Confirm `/ask` works for:
+- [x] Run all relevant scripts
+- [x] Confirm the project remains stable
+- [x] Confirm `/ask` works for:
   - direct answer
   - clarification-based multi-turn
   - tool execution
-- [ ] Confirm checklist is fully marked
+- [x] Confirm checklist is fully marked
 
 **Acceptance criteria:**
 - All relevant scripts pass

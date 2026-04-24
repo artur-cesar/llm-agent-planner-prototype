@@ -62,27 +62,27 @@ Build a NestJS-based backend that:
 
 ### 🌐 5. Real LLM Integration (Anthropic)
 
-- [ ] Implement Anthropic provider
-- [ ] Replace or extend Fake LLM usage
-- [ ] Validate real responses
+- [x] Implement Anthropic provider
+- [x] Replace or extend Fake LLM usage
+- [x] Validate real responses
 
 ---
 
 ### 🔁 6. Ask Endpoint (Core Flow)
 
-- [ ] Implement POST `/ask`
-- [ ] Persist user message
-- [ ] Generate assistant response
-- [ ] Persist assistant message
-- [ ] Support conversationId for multi-turn
+- [x] Implement POST `/ask`
+- [x] Persist user message
+- [x] Generate assistant response
+- [x] Persist assistant message
+- [x] Support conversationId for multi-turn
 
 ---
 
 ### 🛠️ 7. Tooling Layer
 
-- [ ] Implement tool definitions
-- [ ] Implement tool executor
-- [ ] Add:
+- [x] Implement tool definitions
+- [x] Implement tool executor
+- [x] Add:
   - getOrderStatus
   - getOrderItems
 
