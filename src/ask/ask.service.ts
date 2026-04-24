@@ -20,6 +20,7 @@ import { MessagesService } from '../conversations/messages.service';
 import { LLM_GATEWAY } from '../llm/llm.constants';
 import { toolDefinitions } from '../tools/tool-definitions';
 import { ToolExecutorService } from '../tools/tool-executor.service';
+import { ASK_SYSTEM_PROMPT } from './system.prompt';
 
 const DEFAULT_USER_ID = 'anonymous-user';
 
@@ -65,6 +66,7 @@ export class AskService {
 
     const answer = await this.llmGateway.generateAnswer({
       messages: this.mapMessagesForLlm(messageHistory),
+      system: conversation.systemPrompt ?? ASK_SYSTEM_PROMPT,
       tools: toolDefinitions,
     });
 
@@ -72,7 +74,11 @@ export class AskService {
      * Decides what to do with the llm answer:
      * Returns final answer or execute tools.
      */
-    const finalAnswer = await this.resolveAnswer(answer, conversation.id);
+    const finalAnswer = await this.resolveAnswer(
+      answer,
+      conversation.id,
+      conversation.systemPrompt ?? ASK_SYSTEM_PROMPT,
+    );
 
     return {
       content: finalAnswer.content,
@@ -83,6 +89,7 @@ export class AskService {
   private async resolveAnswer(
     answer: GenerateAnswerOutput,
     conversationId: string,
+    systemPrompt: string,
   ): Promise<{ content: string }> {
     if (answer.type === 'final_answer') {
       await this.messagesService.create({
@@ -127,6 +134,7 @@ export class AskService {
       await this.messagesService.findByConversationId(conversationId);
     const followUpAnswer = await this.llmGateway.generateAnswer({
       messages: this.mapMessagesForLlm(updatedMessageHistory),
+      system: systemPrompt,
       tools: toolDefinitions,
     });
 
@@ -181,6 +189,7 @@ export class AskService {
     }
 
     return this.conversationsService.create({
+      systemPrompt: ASK_SYSTEM_PROMPT,
       userId: userId?.trim() || DEFAULT_USER_ID,
     });
   }

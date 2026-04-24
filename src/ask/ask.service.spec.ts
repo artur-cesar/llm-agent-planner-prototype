@@ -10,9 +10,11 @@ import { FakeLlmGateway } from '../llm/fake/fake-llm.gateway';
 import { OrderRepository } from '../order/order.repository';
 import { ToolExecutorService } from '../tools/tool-executor.service';
 import { AskService } from './ask.service';
+import { ASK_SYSTEM_PROMPT } from './system.prompt';
 
 type StoredConversation = {
   id: string;
+  systemPrompt: string | null;
   userId: string;
 };
 
@@ -33,6 +35,7 @@ describe('AskService', () => {
       create: jest.fn((input: CreateConversationInput) => {
         const conversation = {
           id: `conversation-${storedConversations.length + 1}`,
+          systemPrompt: input.systemPrompt ?? null,
           userId: input.userId,
         };
 
@@ -98,7 +101,12 @@ describe('AskService', () => {
     });
 
     expect(conversationsService.create.mock.calls).toEqual([
-      [{ userId: 'user-123' }],
+      [
+        {
+          systemPrompt: ASK_SYSTEM_PROMPT,
+          userId: 'user-123',
+        },
+      ],
     ]);
     expect(storedMessages.map((message) => message.role)).toEqual([
       MessageRole.User,

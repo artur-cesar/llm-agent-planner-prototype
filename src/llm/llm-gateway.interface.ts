@@ -12,6 +12,7 @@ export interface LlmMessage {
 
 export interface GenerateAnswerInput {
   messages: LlmMessage[];
+  system?: string;
   tools: ToolDefinition[];
 }
 

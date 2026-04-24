@@ -24,6 +24,7 @@ describe('AnthropicGateway', () => {
     await expect(
       gateway.generateAnswer({
         messages: [{ content: 'Explain agents briefly.', role: 'user' }],
+        system: 'Stay within the tool-calling policy.',
         tools: toolDefinitions,
       }),
     ).resolves.toEqual({
@@ -40,6 +41,7 @@ describe('AnthropicGateway', () => {
         },
       ],
       model: 'claude-sonnet-4-20250514',
+      system: 'Stay within the tool-calling policy.',
       tools: [
         {
           description:
@@ -98,6 +100,7 @@ describe('AnthropicGateway', () => {
     await expect(
       gateway.generateAnswer({
         messages: [{ content: 'test', role: 'user' }],
+        system: 'Test system prompt.',
         tools: [],
       }),
     ).resolves.toEqual({ content: 'First.\nSecond.', type: 'final_answer' });
@@ -120,6 +123,7 @@ describe('AnthropicGateway', () => {
     await expect(
       gateway.generateAnswer({
         messages: [{ content: 'test', role: 'user' }],
+        system: 'Test system prompt.',
         tools: [],
       }),
     ).resolves.toEqual({
@@ -155,6 +159,7 @@ describe('AnthropicGateway', () => {
         messages: [
           { content: 'What is the status of order 123?', role: 'user' },
         ],
+        system: 'Use tools when needed.',
         tools: toolDefinitions,
       }),
     ).resolves.toEqual({
@@ -180,6 +185,7 @@ describe('AnthropicGateway', () => {
     await expect(
       gateway.generateAnswer({
         messages: [{ content: 'test', role: 'user' }],
+        system: 'Test system prompt.',
         tools: [],
       }),
     ).rejects.toThrow(
@@ -219,6 +225,7 @@ describe('AnthropicGateway', () => {
             toolUseId: 'toolu_123',
           },
         ],
+        system: 'Use tools when needed.',
         tools: toolDefinitions,
       }),
     ).resolves.toEqual({

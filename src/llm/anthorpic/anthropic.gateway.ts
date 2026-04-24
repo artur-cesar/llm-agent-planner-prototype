@@ -13,7 +13,7 @@ import {
   LlmGateway,
 } from '../llm-gateway.interface';
 
-const DEFAULT_MAX_TOKENS = 1024;
+const DEFAULT_MAX_TOKENS = 512;
 
 @Injectable()
 export class AnthropicGateway implements LlmGateway {
@@ -46,6 +46,7 @@ export class AnthropicGateway implements LlmGateway {
       max_tokens: this.maxTokens,
       messages: input.messages.map((message) => this.mapMessage(message)),
       model,
+      system: input.system,
       tools: input.tools.map((tool) => this.mapToolDefinition(tool)),
     });
 

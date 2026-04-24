@@ -46,6 +46,7 @@ export interface AnthropicClient {
         role: 'assistant' | 'user';
       }>;
       model: string;
+      system?: string;
       tools?: AnthropicToolDefinition[];
     }): Promise<{
       content: ContentBlock[];
