@@ -8,7 +8,9 @@ import { MessageRole } from '../conversations/message-role.enum';
 import { MessagesService } from '../conversations/messages.service';
 import { FakeLlmGateway } from '../llm/fake/fake-llm.gateway';
 import { OrderRepository } from '../order/order.repository';
+import { LlmPlanner } from '../planner/llm-planner';
 import { ToolExecutorService } from '../tools/tool-executor.service';
+import { TurnRunnerService } from '../turn/turn-runner.service';
 import { AskService } from './ask.service';
 import { ASK_SYSTEM_PROMPT } from './system.prompt';
 
@@ -84,11 +86,16 @@ describe('AskService', () => {
       }),
     } as unknown as jest.Mocked<MessagesService>;
 
+    const llmPlanner = new LlmPlanner(new FakeLlmGateway());
+    const turnRunnerService = new TurnRunnerService(
+      llmPlanner,
+      new ToolExecutorService(new OrderRepository()),
+    );
+
     askService = new AskService(
       conversationsService,
       messagesService,
-      new ToolExecutorService(new OrderRepository()),
-      new FakeLlmGateway(),
+      turnRunnerService,
     );
   });
 
@@ -146,6 +153,41 @@ describe('AskService', () => {
       toolName: 'getOrderStatus',
       toolUseId: 'fake-tool-use-getOrderStatus-123',
     });
+  });
+
+  it('should execute multiple tool calls in the same turn', async () => {
+    await expect(
+      askService.ask(
+        { prompt: 'What is the status and items of order 123?' },
+        'user-123',
+      ),
+    ).resolves.toEqual({
+      content:
+        'Order 123 is currently PAID. Order 123 contains: Keyboard, Mouse.',
+      conversationId: 'conversation-1',
+    });
+
+    expect(storedMessages.map((message) => message.role)).toEqual([
+      MessageRole.User,
+      MessageRole.Assistant,
+      MessageRole.Tool,
+      MessageRole.Assistant,
+      MessageRole.Tool,
+      MessageRole.Assistant,
+    ]);
+    expect(storedMessages[1].metadata).toEqual({
+      arguments: { orderId: '123' },
+      toolName: 'getOrderStatus',
+      toolUseId: 'fake-tool-use-getOrderStatus-123',
+    });
+    expect(storedMessages[3].metadata).toEqual({
+      arguments: { orderId: '123' },
+      toolName: 'getOrderItems',
+      toolUseId: 'fake-tool-use-getOrderItems-123',
+    });
+    expect(storedMessages[5].content).toBe(
+      'Order 123 is currently PAID. Order 123 contains: Keyboard, Mouse.',
+    );
   });
 
   it('should reuse persisted context for clarification-based follow-up turns', async () => {
