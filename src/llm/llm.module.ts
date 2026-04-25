@@ -1,61 +1,30 @@
 import { Module } from '@nestjs/common';
 
-import { AnthropicGateway } from './anthorpic/anthropic.gateway';
-import { FakeLlmGateway } from './fake/fake-llm.gateway';
+import { AnthropicLlmFactory } from './anthropic/anthropic.factory';
+import { FakeLlmFactory } from './fake/fake.factory';
 import { LlmGateway } from './llm-gateway.interface';
-import {
-  LLM_GATEWAY,
-  LLM_PROVIDER_ANTHROPIC,
-  LLM_PROVIDER_FAKE,
-  LlmProvider,
-} from './llm.constants';
-
-function getConfiguredProvider(): LlmProvider {
-  const provider = process.env.LLM_PROVIDER ?? LLM_PROVIDER_FAKE;
-
-  if (provider === LLM_PROVIDER_FAKE || provider === LLM_PROVIDER_ANTHROPIC) {
-    return provider;
-  }
-
-  throw new Error(
-    `Unsupported LLM_PROVIDER "${provider}". Expected "fake" or "anthropic".`,
-  );
-}
-
-function assertAnthropicConfiguration(): void {
-  if (!process.env.ANTHROPIC_API_KEY?.trim()) {
-    throw new Error(
-      'ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic.',
-    );
-  }
-
-  if (!process.env.ANTHROPIC_MODEL?.trim()) {
-    throw new Error('ANTHROPIC_MODEL is required when LLM_PROVIDER=anthropic.');
-  }
-}
+import { getLlmFactory, getLlmProvider } from './llm.config';
+import { LLM_GATEWAY } from './llm.constants';
 
 @Module({
   providers: [
-    FakeLlmGateway,
-    {
-      provide: AnthropicGateway,
-      useFactory: (): AnthropicGateway => new AnthropicGateway(),
-    },
+    FakeLlmFactory,
+    AnthropicLlmFactory,
     {
       provide: LLM_GATEWAY,
-      inject: [FakeLlmGateway, AnthropicGateway],
+      inject: [FakeLlmFactory, AnthropicLlmFactory],
       useFactory: (
-        fakeGateway: FakeLlmGateway,
-        anthropicGateway: AnthropicGateway,
+        fakeFactory: FakeLlmFactory,
+        anthropicFactory: AnthropicLlmFactory,
       ): LlmGateway => {
-        const provider = getConfiguredProvider();
+        const provider = getLlmProvider();
+        const factory = getLlmFactory(provider, [
+          fakeFactory,
+          anthropicFactory,
+        ]);
 
-        if (provider === LLM_PROVIDER_ANTHROPIC) {
-          assertAnthropicConfiguration();
-          return anthropicGateway;
-        }
-
-        return fakeGateway;
+        factory.validate();
+        return factory.create();
       },
     },
   ],
