@@ -11,9 +11,31 @@ import {
 export class FakeLlmGateway implements LlmGateway {
   generateAnswer(input: GenerateAnswerInput): GenerateAnswerOutput {
     const lastMessage = input.messages.at(-1);
+    const requestedToolNames = this.resolveRequestedToolNames(input.messages);
 
     if (lastMessage?.role === 'tool') {
-      return this.answerFromToolResult(lastMessage);
+      const remainingToolName = this.findNextToolToExecute(
+        requestedToolNames,
+        input.messages,
+      );
+
+      if (remainingToolName !== null) {
+        const orderId = this.readString(
+          this.parseToolResult(lastMessage.content).orderId,
+        );
+
+        if (orderId !== null) {
+          return {
+            arguments: { orderId },
+            content: `Checking ${remainingToolName} for order ${orderId}.`,
+            toolName: remainingToolName,
+            toolUseId: `fake-tool-use-${remainingToolName}-${orderId}`,
+            type: 'tool_call',
+          };
+        }
+      }
+
+      return this.answerFromToolResults(input.messages, requestedToolNames);
     }
 
     const lastUserMessage = this.findLastUserMessage(input.messages);
@@ -25,7 +47,7 @@ export class FakeLlmGateway implements LlmGateway {
       };
     }
 
-    const requestedToolName = this.resolveRequestedToolName(input.messages);
+    const requestedToolName = requestedToolNames[0] ?? null;
     const orderId = this.extractOrderId(lastUserMessage.content);
 
     if (requestedToolName !== null && orderId === null) {
@@ -47,42 +69,6 @@ export class FakeLlmGateway implements LlmGateway {
 
     return {
       content: `Fake LLM response: ${lastUserMessage.content}`,
-      type: 'final_answer',
-    };
-  }
-
-  private answerFromToolResult(message: LlmMessage): GenerateAnswerOutput {
-    const result = this.parseToolResult(message.content);
-
-    if (message.toolName === 'getOrderStatus') {
-      const orderId = this.readString(result.orderId) ?? 'unknown';
-      const status = this.readString(result.status) ?? 'UNKNOWN';
-
-      return {
-        content: `Order ${orderId} is currently ${status}.`,
-        type: 'final_answer',
-      };
-    }
-
-    if (message.toolName === 'getOrderItems') {
-      const orderId = this.readString(result.orderId) ?? 'unknown';
-      const items = Array.isArray(result.items)
-        ? result.items.filter(
-            (item): item is string => typeof item === 'string',
-          )
-        : [];
-
-      return {
-        content:
-          items.length > 0
-            ? `Order ${orderId} contains: ${items.join(', ')}.`
-            : `I could not find any items for order ${orderId}.`,
-        type: 'final_answer',
-      };
-    }
-
-    return {
-      content: `Fake LLM response: ${message.content}`,
       type: 'final_answer',
     };
   }
@@ -119,21 +105,113 @@ export class FakeLlmGateway implements LlmGateway {
     return typeof value === 'string' && value.trim() !== '' ? value : null;
   }
 
-  private resolveRequestedToolName(messages: LlmMessage[]): string | null {
+  private answerFromToolResults(
+    messages: LlmMessage[],
+    requestedToolNames: string[],
+  ): GenerateAnswerOutput {
+    const toolResults = this.collectToolResults(messages);
+    const normalizedRequestedToolNames =
+      requestedToolNames.length > 0
+        ? requestedToolNames
+        : [...toolResults.keys()];
+    const orderId =
+      this.readString(toolResults.get('getOrderStatus')?.orderId) ??
+      this.readString(toolResults.get('getOrderItems')?.orderId) ??
+      'unknown';
+
+    const contentParts: string[] = [];
+
+    if (normalizedRequestedToolNames.includes('getOrderStatus')) {
+      const status =
+        this.readString(toolResults.get('getOrderStatus')?.status) ?? 'UNKNOWN';
+
+      contentParts.push(`Order ${orderId} is currently ${status}.`);
+    }
+
+    if (normalizedRequestedToolNames.includes('getOrderItems')) {
+      const itemsValue = toolResults.get('getOrderItems')?.items;
+      const items =
+        Array.isArray(itemsValue) &&
+        itemsValue.every((item) => typeof item === 'string')
+          ? itemsValue
+          : [];
+
+      contentParts.push(
+        items.length > 0
+          ? `Order ${orderId} contains: ${items.join(', ')}.`
+          : `I could not find any items for order ${orderId}.`,
+      );
+    }
+
+    if (contentParts.length === 0) {
+      return {
+        content: 'Fake LLM response: ',
+        type: 'final_answer',
+      };
+    }
+
+    return {
+      content: contentParts.join(' '),
+      type: 'final_answer',
+    };
+  }
+
+  private collectToolResults(
+    messages: LlmMessage[],
+  ): Map<string, Record<string, unknown>> {
+    const toolResults = new Map<string, Record<string, unknown>>();
+
+    for (const message of messages) {
+      if (
+        message.role !== 'tool' ||
+        message.toolName === undefined ||
+        message.toolName === null
+      ) {
+        continue;
+      }
+
+      toolResults.set(message.toolName, this.parseToolResult(message.content));
+    }
+
+    return toolResults;
+  }
+
+  private findNextToolToExecute(
+    requestedToolNames: string[],
+    messages: LlmMessage[],
+  ): string | null {
+    const executedToolNames = new Set(
+      messages
+        .filter(
+          (message) =>
+            message.role === 'tool' &&
+            message.toolName !== undefined &&
+            message.toolName !== null,
+        )
+        .map((message) => message.toolName as string),
+    );
+
+    return (
+      requestedToolNames.find((toolName) => !executedToolNames.has(toolName)) ??
+      null
+    );
+  }
+
+  private resolveRequestedToolNames(messages: LlmMessage[]): string[] {
     const latestUserMessage = this.findLastUserMessage(messages);
 
     if (latestUserMessage === undefined) {
-      return null;
+      return [];
     }
 
-    const directTool = this.detectToolName(latestUserMessage.content);
+    const directTools = this.detectToolNames(latestUserMessage.content);
 
-    if (directTool !== null) {
-      return directTool;
+    if (directTools.length > 0) {
+      return directTools;
     }
 
     if (this.extractOrderId(latestUserMessage.content) === null) {
-      return null;
+      return [];
     }
 
     const previousAssistantMessage = [...messages]
@@ -145,7 +223,7 @@ export class FakeLlmGateway implements LlmGateway {
       );
 
     if (previousAssistantMessage === undefined) {
-      return null;
+      return [];
     }
 
     const assistantIndex = messages.indexOf(previousAssistantMessage);
@@ -157,25 +235,26 @@ export class FakeLlmGateway implements LlmGateway {
         continue;
       }
 
-      const inferredTool = this.detectToolName(message.content);
+      const inferredTools = this.detectToolNames(message.content);
 
-      if (inferredTool !== null) {
-        return inferredTool;
+      if (inferredTools.length > 0) {
+        return inferredTools;
       }
     }
 
-    return null;
+    return [];
   }
 
-  private detectToolName(content: string): string | null {
+  private detectToolNames(content: string): string[] {
     const normalizedContent = content.toLowerCase();
+    const toolNames: string[] = [];
 
     if (
       normalizedContent.includes('status') ||
       normalizedContent.includes('situa') ||
       normalizedContent.includes('estado')
     ) {
-      return 'getOrderStatus';
+      toolNames.push('getOrderStatus');
     }
 
     if (
@@ -183,9 +262,9 @@ export class FakeLlmGateway implements LlmGateway {
       normalizedContent.includes('product') ||
       normalizedContent.includes('produto')
     ) {
-      return 'getOrderItems';
+      toolNames.push('getOrderItems');
     }
 
-    return null;
+    return toolNames;
   }
 }
