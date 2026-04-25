@@ -11,6 +11,8 @@ import { LlmPlanner } from '../planner/llm-planner';
 import { ToolExecutorService } from '../tools/tool-executor.service';
 
 const DEFAULT_MAX_ITERATIONS = 5;
+const DEFAULT_MAX_LLM_CALLS = 5;
+const DEFAULT_MAX_TOOL_CALLS = 3;
 
 export interface TurnRunnerGeneratedMessage extends LlmMessage {
   metadata?: Record<string, unknown> | null;
@@ -32,6 +34,8 @@ export class TurnRunnerService {
   private readonly logger = new Logger(TurnRunnerService.name);
 
   private readonly maxIterations = DEFAULT_MAX_ITERATIONS;
+  private readonly maxLlmCalls = DEFAULT_MAX_LLM_CALLS;
+  private readonly maxToolCalls = DEFAULT_MAX_TOOL_CALLS;
 
   constructor(
     private readonly planner: LlmPlanner,
@@ -41,8 +45,22 @@ export class TurnRunnerService {
   async run(input: TurnRunnerInput): Promise<TurnRunnerOutput> {
     const workingMessages = [...input.messages];
     const generatedMessages: TurnRunnerGeneratedMessage[] = [];
+    let llmCalls = 0;
+    let toolCalls = 0;
 
     for (let iteration = 1; iteration <= this.maxIterations; iteration += 1) {
+      if (llmCalls >= this.maxLlmCalls) {
+        this.logger.warn(
+          `turn:max_llm_calls_reached limit=${this.maxLlmCalls} iteration=${iteration}`,
+        );
+
+        throw new InternalServerErrorException(
+          `Planner exceeded the max LLM call limit (${this.maxLlmCalls}) for the current turn.`,
+        );
+      }
+
+      llmCalls += 1;
+
       const decision = await this.planner.decide({
         messages: workingMessages,
         systemPrompt: input.systemPrompt,
@@ -62,6 +80,10 @@ export class TurnRunnerService {
         };
 
         generatedMessages.push(finalAnswerMessage);
+
+        this.logger.log(
+          `turn:completed outcome=final_answer iterations=${iteration} llmCalls=${llmCalls} toolCalls=${toolCalls}`,
+        );
 
         return {
           content: decision.content,
@@ -85,19 +107,42 @@ export class TurnRunnerService {
       workingMessages.push(assistantToolCallMessage);
       generatedMessages.push(assistantToolCallMessage);
 
-      const executionResult = this.toolExecutorService.execute(
+      if (toolCalls >= this.maxToolCalls) {
+        this.logger.warn(
+          `turn:max_tool_calls_reached limit=${this.maxToolCalls} iteration=${iteration}`,
+        );
+
+        throw new InternalServerErrorException(
+          `Planner exceeded the max tool call limit (${this.maxToolCalls}) for the current turn.`,
+        );
+      }
+
+      toolCalls += 1;
+
+      this.logger.log(
+        `turn:tool_execution_start iteration=${iteration} toolName=${decision.toolName} attempt=1`,
+      );
+
+      const executionResult = await this.toolExecutorService.execute(
         decision.toolName,
         decision.arguments,
       );
 
-      this.logger.log(
-        `turn:tool_executed iteration=${iteration} toolName=${executionResult.toolName}`,
-      );
+      if (executionResult.success) {
+        this.logger.log(
+          `turn:tool_execution_success iteration=${iteration} toolName=${executionResult.toolName} attempt=${executionResult.attempt} durationMs=${executionResult.durationMs}`,
+        );
+      } else {
+        this.logger.warn(
+          `turn:tool_execution_failure iteration=${iteration} toolName=${executionResult.toolName} attempt=${executionResult.attempt} durationMs=${executionResult.durationMs} reason=${executionResult.reason}`,
+        );
+      }
 
       const toolResultMessage: TurnRunnerGeneratedMessage = {
-        content: JSON.stringify(executionResult.result),
+        content: JSON.stringify(executionResult),
         metadata: {
-          result: executionResult.result,
+          arguments: decision.arguments,
+          result: executionResult,
           toolName: executionResult.toolName,
           toolUseId: decision.toolUseId,
         },

@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
+import type { ToolExecutionResult } from '../../tools/tool-definition.interface';
+
 import {
   GenerateAnswerInput,
   GenerateAnswerOutput,
@@ -21,7 +23,7 @@ export class FakeLlmGateway implements LlmGateway {
 
       if (remainingToolName !== null) {
         const orderId = this.readString(
-          this.parseToolResult(lastMessage.content).orderId,
+          this.parseToolExecutionResult(lastMessage.content).arguments.orderId,
         );
 
         if (orderId !== null) {
@@ -101,8 +103,80 @@ export class FakeLlmGateway implements LlmGateway {
     return {};
   }
 
+  private parseToolExecutionResult(content: string): ToolExecutionResult {
+    const parsed = this.parseToolResult(content);
+
+    if (parsed.type === 'tool_success') {
+      return {
+        arguments: this.readRecord(parsed.arguments),
+        attempt: this.readNumber(parsed.attempt),
+        data: this.readRecord(parsed.data),
+        durationMs: this.readNumber(parsed.durationMs),
+        success: true,
+        toolName: this.readString(parsed.toolName) ?? 'unknown',
+        type: 'tool_success',
+      };
+    }
+
+    if (parsed.type === 'tool_error') {
+      return {
+        arguments: this.readRecord(parsed.arguments),
+        attempt: this.readNumber(parsed.attempt),
+        durationMs: this.readNumber(parsed.durationMs),
+        message: this.readString(parsed.message) ?? 'Tool execution failed.',
+        reason: this.readToolErrorReason(parsed.reason),
+        retryable: this.readBoolean(parsed.retryable),
+        success: false,
+        toolName: this.readString(parsed.toolName) ?? 'unknown',
+        type: 'tool_error',
+      };
+    }
+
+    return {
+      arguments: {},
+      attempt: 1,
+      data: parsed,
+      durationMs: 0,
+      success: true,
+      toolName: this.readString(parsed.toolName) ?? 'unknown',
+      type: 'tool_success',
+    };
+  }
+
   private readString(value: unknown): string | null {
     return typeof value === 'string' && value.trim() !== '' ? value : null;
+  }
+
+  private readNumber(value: unknown): number {
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+
+  private readBoolean(value: unknown): boolean {
+    return value === true;
+  }
+
+  private readRecord(value: unknown): Record<string, unknown> {
+    if (value === null || value === undefined) {
+      return {};
+    }
+
+    if (typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+
+    return value as Record<string, unknown>;
+  }
+
+  private readToolErrorReason(value: unknown) {
+    switch (value) {
+      case 'EXECUTION_ERROR':
+      case 'INVALID_ARGUMENTS':
+      case 'TIMEOUT':
+      case 'TOOL_NOT_FOUND':
+        return value;
+      default:
+        return 'EXECUTION_ERROR';
+    }
   }
 
   private answerFromToolResults(
@@ -115,32 +189,47 @@ export class FakeLlmGateway implements LlmGateway {
         ? requestedToolNames
         : [...toolResults.keys()];
     const orderId =
-      this.readString(toolResults.get('getOrderStatus')?.orderId) ??
-      this.readString(toolResults.get('getOrderItems')?.orderId) ??
+      this.readOrderId(toolResults.get('getOrderStatus')) ??
+      this.readOrderId(toolResults.get('getOrderItems')) ??
       'unknown';
 
     const contentParts: string[] = [];
 
     if (normalizedRequestedToolNames.includes('getOrderStatus')) {
-      const status =
-        this.readString(toolResults.get('getOrderStatus')?.status) ?? 'UNKNOWN';
+      const statusResult = toolResults.get('getOrderStatus');
 
-      contentParts.push(`Order ${orderId} is currently ${status}.`);
+      if (statusResult?.type === 'tool_success') {
+        const status = this.readString(statusResult.data.status) ?? 'UNKNOWN';
+
+        contentParts.push(`Order ${orderId} is currently ${status}.`);
+      } else if (statusResult?.type === 'tool_error') {
+        contentParts.push(
+          `I could not load the status for order ${orderId} because ${this.describeToolError(statusResult)}.`,
+        );
+      }
     }
 
     if (normalizedRequestedToolNames.includes('getOrderItems')) {
-      const itemsValue = toolResults.get('getOrderItems')?.items;
-      const items =
-        Array.isArray(itemsValue) &&
-        itemsValue.every((item) => typeof item === 'string')
-          ? itemsValue
-          : [];
+      const itemsResult = toolResults.get('getOrderItems');
 
-      contentParts.push(
-        items.length > 0
-          ? `Order ${orderId} contains: ${items.join(', ')}.`
-          : `I could not find any items for order ${orderId}.`,
-      );
+      if (itemsResult?.type === 'tool_success') {
+        const itemsValue = itemsResult.data.items;
+        const items =
+          Array.isArray(itemsValue) &&
+          itemsValue.every((item) => typeof item === 'string')
+            ? itemsValue
+            : [];
+
+        contentParts.push(
+          items.length > 0
+            ? `Order ${orderId} contains: ${items.join(', ')}.`
+            : `I could not find any items for order ${orderId}.`,
+        );
+      } else if (itemsResult?.type === 'tool_error') {
+        contentParts.push(
+          `I could not load the items for order ${orderId} because ${this.describeToolError(itemsResult)}.`,
+        );
+      }
     }
 
     if (contentParts.length === 0) {
@@ -158,8 +247,8 @@ export class FakeLlmGateway implements LlmGateway {
 
   private collectToolResults(
     messages: LlmMessage[],
-  ): Map<string, Record<string, unknown>> {
-    const toolResults = new Map<string, Record<string, unknown>>();
+  ): Map<string, ToolExecutionResult> {
+    const toolResults = new Map<string, ToolExecutionResult>();
 
     for (const message of messages) {
       if (
@@ -170,7 +259,10 @@ export class FakeLlmGateway implements LlmGateway {
         continue;
       }
 
-      toolResults.set(message.toolName, this.parseToolResult(message.content));
+      toolResults.set(
+        message.toolName,
+        this.parseToolExecutionResult(message.content),
+      );
     }
 
     return toolResults;
@@ -195,6 +287,30 @@ export class FakeLlmGateway implements LlmGateway {
       requestedToolNames.find((toolName) => !executedToolNames.has(toolName)) ??
       null
     );
+  }
+
+  private describeToolError(
+    result: Extract<ToolExecutionResult, { type: 'tool_error' }>,
+  ): string {
+    switch (result.reason) {
+      case 'TIMEOUT':
+        return 'the tool timed out';
+      case 'INVALID_ARGUMENTS':
+        return 'the tool input was invalid';
+      case 'TOOL_NOT_FOUND':
+        return 'the tool is not available';
+      case 'EXECUTION_ERROR':
+      default:
+        return 'the tool failed';
+    }
+  }
+
+  private readOrderId(result: ToolExecutionResult | undefined): string | null {
+    if (result === undefined) {
+      return null;
+    }
+
+    return this.readString(result.arguments.orderId);
   }
 
   private resolveRequestedToolNames(messages: LlmMessage[]): string[] {
