@@ -147,9 +147,22 @@ describe('AskService', () => {
       toolName: 'getOrderStatus',
       toolUseId: 'fake-tool-use-getOrderStatus-123',
     });
-    expect(storedMessages[2].content).toBe('{"orderId":"123","status":"PAID"}');
-    expect(storedMessages[2].metadata).toEqual({
-      result: { orderId: '123', status: 'PAID' },
+    expect(JSON.parse(storedMessages[2].content)).toMatchObject({
+      arguments: { orderId: '123' },
+      data: { orderId: '123', status: 'PAID' },
+      success: true,
+      toolName: 'getOrderStatus',
+      type: 'tool_success',
+    });
+    expect(storedMessages[2].metadata).toMatchObject({
+      arguments: { orderId: '123' },
+      result: {
+        arguments: { orderId: '123' },
+        data: { orderId: '123', status: 'PAID' },
+        success: true,
+        toolName: 'getOrderStatus',
+        type: 'tool_success',
+      },
       toolName: 'getOrderStatus',
       toolUseId: 'fake-tool-use-getOrderStatus-123',
     });
@@ -212,14 +225,22 @@ describe('AskService', () => {
     expect(messagesService.findByConversationId.mock.calls).toContainEqual([
       firstResponse.conversationId,
     ]);
-    expect(storedMessages.map((message) => message.content)).toEqual([
+    expect(
+      storedMessages.slice(0, 4).map((message) => message.content),
+    ).toEqual([
       'What is the status of my order?',
       'I can help with that. Which order ID should I check for you?',
       '123',
       'Checking getOrderStatus for order 123.',
-      '{"orderId":"123","status":"PAID"}',
-      'Order 123 is currently PAID.',
     ]);
+    expect(JSON.parse(storedMessages[4].content)).toMatchObject({
+      arguments: { orderId: '123' },
+      data: { orderId: '123', status: 'PAID' },
+      success: true,
+      toolName: 'getOrderStatus',
+      type: 'tool_success',
+    });
+    expect(storedMessages[5].content).toBe('Order 123 is currently PAID.');
   });
 
   it('should fail when the conversation does not exist', async () => {
