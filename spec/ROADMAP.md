@@ -90,8 +90,8 @@ Build a NestJS-based backend that:
 
 ### 🧩 8. Planner Introduction (Core Differentiator)
 
-- [ ] Introduce planner abstraction
-- [ ] Allow decision between:
+- [x] Introduce planner abstraction
+- [x] Allow decision between:
   - direct answer
   - single tool call
   - multiple tool calls
@@ -100,27 +100,27 @@ Build a NestJS-based backend that:
 
 ### 🔄 9. Planner Execution Loop
 
-- [ ] Implement execution loop:
+- [x] Implement execution loop:
   - LLM decides action
   - tool executes
   - result feeds next step
-- [ ] Support multi-step reasoning
+- [x] Support multi-step reasoning
 
 ---
 
 ### 📊 10. Observability
 
-- [ ] Add structured logs
-- [ ] Log planner decisions
-- [ ] Log tool calls and responses
+- [x] Add structured logs
+- [x] Log planner decisions
+- [x] Log tool calls and responses
 
 ---
 
 ### 📚 11. API Documentation
 
-- [ ] Integrate OpenAPI
-- [ ] Add Swagger UI
-- [ ] Document `/ask`
+- [x] Integrate OpenAPI
+- [x] Add Swagger UI
+- [x] Document `/ask`
 
 ---
 
