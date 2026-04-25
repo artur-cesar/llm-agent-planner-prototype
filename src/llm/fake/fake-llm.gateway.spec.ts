@@ -78,4 +78,86 @@ describe('FakeLlmGateway', () => {
       type: 'final_answer',
     });
   });
+
+  it('should request another tool when the prompt needs status and items', () => {
+    const gateway = new FakeLlmGateway();
+
+    expect(
+      gateway.generateAnswer({
+        messages: [
+          {
+            content: 'What is the status and items of order 123?',
+            role: 'user',
+          },
+          {
+            arguments: { orderId: '123' },
+            content: 'Checking getOrderStatus for order 123.',
+            role: 'assistant',
+            toolName: 'getOrderStatus',
+            toolUseId: 'fake-tool-use-getOrderStatus-123',
+          },
+          {
+            content: '{"orderId":"123","status":"PAID"}',
+            role: 'tool',
+            toolName: 'getOrderStatus',
+            toolUseId: 'fake-tool-use-getOrderStatus-123',
+          },
+        ],
+        tools: toolDefinitions,
+      }),
+    ).toEqual({
+      arguments: { orderId: '123' },
+      content: 'Checking getOrderItems for order 123.',
+      toolName: 'getOrderItems',
+      toolUseId: 'fake-tool-use-getOrderItems-123',
+      type: 'tool_call',
+    });
+  });
+
+  it('should combine multiple tool results into one final answer', () => {
+    const gateway = new FakeLlmGateway();
+
+    expect(
+      gateway.generateAnswer({
+        messages: [
+          {
+            content: 'What is the status and items of order 123?',
+            role: 'user',
+          },
+          {
+            arguments: { orderId: '123' },
+            content: 'Checking getOrderStatus for order 123.',
+            role: 'assistant',
+            toolName: 'getOrderStatus',
+            toolUseId: 'fake-tool-use-getOrderStatus-123',
+          },
+          {
+            content: '{"orderId":"123","status":"PAID"}',
+            role: 'tool',
+            toolName: 'getOrderStatus',
+            toolUseId: 'fake-tool-use-getOrderStatus-123',
+          },
+          {
+            arguments: { orderId: '123' },
+            content: 'Checking getOrderItems for order 123.',
+            role: 'assistant',
+            toolName: 'getOrderItems',
+            toolUseId: 'fake-tool-use-getOrderItems-123',
+          },
+          {
+            content:
+              '{"orderId":"123","found":true,"items":["Keyboard","Mouse"]}',
+            role: 'tool',
+            toolName: 'getOrderItems',
+            toolUseId: 'fake-tool-use-getOrderItems-123',
+          },
+        ],
+        tools: toolDefinitions,
+      }),
+    ).toEqual({
+      content:
+        'Order 123 is currently PAID. Order 123 contains: Keyboard, Mouse.',
+      type: 'final_answer',
+    });
+  });
 });

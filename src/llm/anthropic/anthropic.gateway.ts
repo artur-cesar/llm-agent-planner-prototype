@@ -1,7 +1,7 @@
 import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages';
 
 import Anthropic from '@anthropic-ai/sdk';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import type { ToolDefinition } from '../../tools/tool-definition.interface';
 import type { AnthropicClient, AnthropicGatewayOptions } from './types';
@@ -17,6 +17,8 @@ const DEFAULT_MAX_TOKENS = 512;
 
 @Injectable()
 export class AnthropicGateway implements LlmGateway {
+  private readonly logger = new Logger(AnthropicGateway.name);
+
   private readonly apiKey: string | undefined;
 
   private readonly client: AnthropicClient | undefined;
@@ -41,16 +43,35 @@ export class AnthropicGateway implements LlmGateway {
   ): Promise<GenerateAnswerOutput> {
     const client = this.getClient();
     const model = this.getModel();
+    const mappedMessages = input.messages.map((message) =>
+      this.mapMessage(message),
+    );
+    const toolNames = input.tools.map((tool) => tool.name).join(',');
+
+    this.logger.log(
+      `anthropic:request model=${model} messages=${input.messages.length} tools=[${toolNames}] system=${String(
+        input.system !== undefined,
+      )}`,
+    );
 
     const response = await client.messages.create({
       max_tokens: this.maxTokens,
-      messages: input.messages.map((message) => this.mapMessage(message)),
+      messages: mappedMessages,
       model,
       system: input.system,
       tools: input.tools.map((tool) => this.mapToolDefinition(tool)),
     });
+    const mappedResponse = this.mapResponse(response.content);
 
-    return this.mapResponse(response.content);
+    this.logger.log(
+      `anthropic:response type=${mappedResponse.type}${
+        mappedResponse.type === 'tool_call'
+          ? ` toolName=${mappedResponse.toolName}`
+          : ''
+      } textLength=${mappedResponse.content.length}`,
+    );
+
+    return mappedResponse;
   }
 
   private getClient(): AnthropicClient {
