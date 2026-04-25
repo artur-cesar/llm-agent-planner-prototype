@@ -223,7 +223,7 @@ The immediate goal is to support multiple tool calls inside the same user turn w
 - [x] Confirm `x-user-id` behavior remains unchanged
 - [x] Confirm `conversationId` behavior remains unchanged
 - [x] Confirm no regression in existing flows
-- [ ] Confirm checklist is fully marked
+- [x] Confirm checklist is fully marked
 
 **Acceptance criteria:**
 - System supports multiple tool calls in the same user turn
@@ -262,9 +262,9 @@ Co-authored-by: OpenAI Codex <codex@openai.com>
 
 After completing all tasks and committing changes:
 
-- [ ] Push the branch to origin
-- [ ] Create a pull request using GitHub CLI (`gh pr create --fill`)
-- [ ] Manually edit the PR body to fully comply with:
+- [x] Push the branch to origin
+- [x] Create a pull request using GitHub CLI (`gh pr create --fill`)
+- [x] Manually edit the PR body to fully comply with:
   `.github/pull_request_template.md`
 
 **Acceptance criteria:**
