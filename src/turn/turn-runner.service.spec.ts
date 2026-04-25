@@ -255,9 +255,15 @@ function createRunner(
       ),
   };
 
-  return new TurnRunnerService(
+  const runner = new TurnRunnerService(
     planner as never,
     new ToolExecutorService(new OrderRepository()),
-    maxIterations,
   );
+
+  if (maxIterations !== undefined) {
+    (runner as unknown as { maxIterations: number }).maxIterations =
+      maxIterations;
+  }
+
+  return runner;
 }

@@ -31,10 +31,11 @@ export interface TurnRunnerOutput {
 export class TurnRunnerService {
   private readonly logger = new Logger(TurnRunnerService.name);
 
+  private readonly maxIterations = DEFAULT_MAX_ITERATIONS;
+
   constructor(
     private readonly planner: LlmPlanner,
     private readonly toolExecutorService: ToolExecutorService,
-    private readonly maxIterations: number = DEFAULT_MAX_ITERATIONS,
   ) {}
 
   async run(input: TurnRunnerInput): Promise<TurnRunnerOutput> {
