@@ -105,7 +105,7 @@ describeDatabase('message persistence (isolated PostgreSQL database)', () => {
     ).toEqual(['First', 'Second', 'Tool call', 'Tool result', 'Final answer']);
   });
 
-  it('persists a complete sequential turn and reloads its typed history on a follow-up', async () => {
+  it('reloads a sequential turn and executes both tools for a different order in the same conversation', async () => {
     const generateAnswer = jest
       .fn<
         ReturnType<LlmGateway['generateAnswer']>,
@@ -130,8 +130,22 @@ describeDatabase('message persistence (isolated PostgreSQL database)', () => {
         content: 'PAID; Keyboard, Mouse.',
       })
       .mockReturnValueOnce({
+        type: 'tool_call',
+        toolName: 'getOrderStatus',
+        toolUseId: 'toolu_status_456',
+        arguments: { orderId: '456' },
+        content: 'Checking status of 456.',
+      })
+      .mockReturnValueOnce({
+        type: 'tool_call',
+        toolName: 'getOrderItems',
+        toolUseId: 'toolu_items_456',
+        arguments: { orderId: '456' },
+        content: 'Checking items of 456.',
+      })
+      .mockReturnValueOnce({
         type: 'final_answer',
-        content: 'The same order is PAID.',
+        content: 'PREPARING; Monitor.',
       });
     const conversations = new ConversationsService(
       database.getRepository(Conversation),
@@ -170,10 +184,17 @@ describeDatabase('message persistence (isolated PostgreSQL database)', () => {
       runner,
       new ToolRegistry(new OrderRepository()),
     );
-    await reloadedAsk.ask(
-      { conversationId: first.conversationId, prompt: 'And its status again?' },
+    const second = await reloadedAsk.ask(
+      {
+        conversationId: first.conversationId,
+        prompt: 'Status and items of order 456',
+      },
       'test-owner',
     );
+    expect(second).toEqual({
+      content: 'PREPARING; Monitor.',
+      conversationId: first.conversationId,
+    });
     const history = generateAnswer.mock.calls[3][0].messages;
     expect(history).toHaveLength(7);
     expect(history[1]).toMatchObject({
@@ -192,9 +213,26 @@ describeDatabase('message persistence (isolated PostgreSQL database)', () => {
       type: 'tool_result',
       toolUseId: 'toolu_items',
     });
-    expect(
-      await service.findByConversationId(first.conversationId),
-    ).toHaveLength(8);
+    const secondTurnResults = generateAnswer.mock.calls[5][0].messages
+      .filter((message) => message.type === 'tool_result')
+      .slice(-2)
+      .map((message) => message.result);
+    expect(secondTurnResults).toMatchObject([
+      {
+        toolName: 'getOrderStatus',
+        arguments: { orderId: '456' },
+        data: { orderId: '456', status: 'PREPARING' },
+      },
+      {
+        toolName: 'getOrderItems',
+        arguments: { orderId: '456' },
+        data: { orderId: '456', items: ['Monitor'] },
+      },
+    ]);
+    const persisted = await service.findByConversationId(first.conversationId);
+    expect(persisted).toHaveLength(12);
+    expect(persisted[8].metadata?.toolUseId).toBe('toolu_status_456');
+    expect(persisted[10].metadata?.toolUseId).toBe('toolu_items_456');
   });
 
   it('backfills legacy rows, supports new inserts, and can revert and reapply the migration', async () => {
