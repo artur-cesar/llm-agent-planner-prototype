@@ -227,3 +227,21 @@ The architecture is intentionally simple, explicit, and extensible.
 ## Conversation ownership
 
 `x-user-id` is a simulated identity, not authentication. Conversations are retrieved by both `conversationId` and the trimmed user identifier. Reuse the same identifier on follow-up requests. An omitted or blank header uses `anonymous-user`. A missing conversation or one owned by another user returns 404 before reading or writing messages.
+
+## Turn persistence and concurrency
+
+Run `npm run migration:run` before starting the updated application. The new migration adds a generated message sequence used to reload conversation history in insertion order. Legacy rows are backfilled using the previous timestamp/UUID order; the original order of tied legacy timestamps cannot be recovered. Sequence gaps after rollback are expected.
+
+The user prompt is saved before calling the LLM. All generated messages are saved together in a short database transaction after the turn finishes. If the LLM or batch persistence fails, the prompt remains, and generated messages are not partially stored. This does not undo tool execution or automatically retry the request. No database transaction remains open during LLM calls.
+
+Overlapping requests for the same conversation return HTTP 409 before saving the second prompt. The guard is released after success or failure. This guard is local to the application process; running multiple instances requires shared coordination. Different conversations can run independently.
+
+### PostgreSQL persistence tests
+
+The persistence suite runs only when `TEST_DATABASE_URL` is set. Use a disposable, isolated PostgreSQL database: the suite applies and reverts migrations and inserts test data. Never point it at the application's database.
+
+```bash
+TEST_DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/TEST_DATABASE npm run test:e2e -- --runInBand
+```
+
+Without that variable, the persistence suite is skipped and the existing HTTP documentation tests still run.

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import type { LlmGateway } from '../llm/llm-gateway.interface';
 
@@ -97,6 +97,12 @@ describe('AskService', () => {
         );
       }),
     } as unknown as jest.Mocked<MessagesService>;
+
+    messagesService.createMany = jest.fn(
+      async (inputs: CreateMessageInput[]) => {
+        for (const input of inputs) await messagesService.create(input);
+      },
+    );
 
     generateAnswer = jest.fn();
     const llmPlanner = new LlmPlanner({ generateAnswer });
@@ -296,6 +302,71 @@ describe('AskService', () => {
       type: 'tool_success',
     });
     expect(storedMessages[5].content).toBe('Order 123 is currently PAID.');
+  });
+
+  it.each([false, true])(
+    'should reject overlapping turns and release the guard after failure=%s',
+    async (fail) => {
+      storedConversations.push({
+        id: 'conversation-1',
+        userId: 'user-123',
+        systemPrompt: null,
+      });
+      let finish!: () => void;
+      let started!: () => void;
+      const entered = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      generateAnswer
+        .mockImplementationOnce(async () => {
+          started();
+          await new Promise<void>((resolve) => {
+            finish = resolve;
+          });
+          if (fail) throw new Error('LLM unavailable');
+          return { type: 'final_answer', content: 'Done.' };
+        })
+        .mockReturnValue({ type: 'final_answer', content: 'Next.' });
+      const input = {
+        conversationId: 'conversation-1',
+        prompt: 'First prompt',
+      };
+      const first = askService.ask(input, 'user-123');
+      const outcome = fail
+        ? expect(first).rejects.toThrow('LLM unavailable')
+        : expect(first).resolves.toMatchObject({ content: 'Done.' });
+      await entered;
+      await expect(
+        askService.ask({ ...input, prompt: 'Rejected prompt' }, 'user-123'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(storedMessages.map((message) => message.content)).toEqual([
+        'First prompt',
+      ]);
+      finish();
+      await outcome;
+      await expect(
+        askService.ask({ ...input, prompt: 'Next prompt' }, 'user-123'),
+      ).resolves.toMatchObject({ content: 'Next.' });
+    },
+  );
+
+  it('should keep the prompt and release the guard when batch persistence fails', async () => {
+    generateAnswer.mockReturnValue({ type: 'final_answer', content: 'Done.' });
+    messagesService.createMany.mockRejectedValueOnce(
+      new Error('Database unavailable'),
+    );
+    await expect(
+      askService.ask({ prompt: 'First prompt' }, 'user-123'),
+    ).rejects.toThrow('Database unavailable');
+    expect(storedMessages.map((message) => message.role)).toEqual([
+      MessageRole.User,
+    ]);
+    await expect(
+      askService.ask(
+        { conversationId: 'conversation-1', prompt: 'Next prompt' },
+        'user-123',
+      ),
+    ).resolves.toMatchObject({ content: 'Done.' });
   });
 
   it('should reject another user before reading or writing messages', async () => {

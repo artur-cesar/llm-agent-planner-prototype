@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -23,6 +24,8 @@ const DEFAULT_USER_ID = 'anonymous-user';
 
 @Injectable()
 export class AskService {
+  private readonly activeConversations = new Set<string>();
+
   constructor(
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
@@ -42,36 +45,47 @@ export class AskService {
       input.conversationId,
       userId?.trim() || DEFAULT_USER_ID,
     );
-    /**
-     * Create the new prompt
-     */
-    await this.messagesService.create({
-      content: input.prompt,
-      conversationId: conversation.id,
-      role: MessageRole.User,
-    });
+    if (this.activeConversations.has(conversation.id)) {
+      throw new ConflictException(
+        'A turn is already running for this conversation.',
+      );
+    }
+    this.activeConversations.add(conversation.id);
 
-    /**
-     * Consolidate the conversation with all messages
-     */
-    const messageHistory = await this.messagesService.findByConversationId(
-      conversation.id,
-    );
+    try {
+      /**
+       * Create the new prompt
+       */
+      await this.messagesService.create({
+        content: input.prompt,
+        conversationId: conversation.id,
+        role: MessageRole.User,
+      });
 
-    const turnResult = await this.turnRunnerService.run({
-      messages: this.mapMessagesForLlm(messageHistory),
-      systemPrompt: conversation.systemPrompt ?? ASK_SYSTEM_PROMPT,
-      tools: toolDefinitions,
-    });
-    await this.persistGeneratedMessages(
-      conversation.id,
-      turnResult.generatedMessages,
-    );
+      /**
+       * Consolidate the conversation with all messages
+       */
+      const messageHistory = await this.messagesService.findByConversationId(
+        conversation.id,
+      );
 
-    return {
-      content: turnResult.content,
-      conversationId: conversation.id,
-    };
+      const turnResult = await this.turnRunnerService.run({
+        messages: this.mapMessagesForLlm(messageHistory),
+        systemPrompt: conversation.systemPrompt ?? ASK_SYSTEM_PROMPT,
+        tools: toolDefinitions,
+      });
+      await this.persistGeneratedMessages(
+        conversation.id,
+        turnResult.generatedMessages,
+      );
+
+      return {
+        content: turnResult.content,
+        conversationId: conversation.id,
+      };
+    } finally {
+      this.activeConversations.delete(conversation.id);
+    }
   }
 
   private mapMessagesForLlm(messages: Message[]): LlmMessage[] {
@@ -119,14 +133,14 @@ export class AskService {
     conversationId: string,
     messages: TurnRunnerGeneratedMessage[],
   ): Promise<void> {
-    for (const message of messages) {
-      await this.messagesService.create({
+    await this.messagesService.createMany(
+      messages.map((message) => ({
         content: message.content,
         conversationId,
         metadata: message.metadata ?? null,
         role: this.mapRole(message.role),
-      });
-    }
+      })),
+    );
   }
 
   private mapRole(role: LlmMessage['role']): MessageRole {
