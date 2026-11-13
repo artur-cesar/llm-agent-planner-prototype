@@ -13,6 +13,7 @@ import { CreateConversationPersistence20260421191830 } from '../src/database/mig
 import { AddMessageSequence20261113120000 } from '../src/database/migrations/20261113120000-AddMessageSequence';
 import { OrderRepository } from '../src/order/order.repository';
 import { ToolExecutorService } from '../src/tools/tool-executor.service';
+import { ToolRegistry } from '../src/tools/tool-registry';
 import { TurnRunnerService } from '../src/turn/turn-runner.service';
 
 const describeDatabase = process.env.TEST_DATABASE_URL
@@ -137,9 +138,14 @@ describeDatabase('message persistence (isolated PostgreSQL database)', () => {
     );
     const runner = new TurnRunnerService(
       { generateAnswer },
-      new ToolExecutorService(new OrderRepository()),
+      new ToolExecutorService(new ToolRegistry(new OrderRepository())),
     );
-    const ask = new AskService(conversations, service, runner);
+    const ask = new AskService(
+      conversations,
+      service,
+      runner,
+      new ToolRegistry(new OrderRepository()),
+    );
     const first = await ask.ask(
       { prompt: 'Status and items of order 123' },
       'test-owner',
@@ -162,6 +168,7 @@ describeDatabase('message persistence (isolated PostgreSQL database)', () => {
       conversations,
       new MessagesService(database.getRepository(Message)),
       runner,
+      new ToolRegistry(new OrderRepository()),
     );
     await reloadedAsk.ask(
       { conversationId: first.conversationId, prompt: 'And its status again?' },

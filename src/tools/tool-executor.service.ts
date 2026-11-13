@@ -1,26 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { OrderRepository } from '../order/order.repository';
+import type { ToolDefinition } from './tool-definition.interface';
+import type { RegisteredTool } from './tool-registry';
+
 import {
   ToolExecutionErrorReason,
   ToolExecutionErrorResult,
   ToolExecutionResult,
 } from './tool-definition.interface';
+import { ToolExecutionFailure } from './tool-execution-failure';
+import { ToolRegistry } from './tool-registry';
 
 const DEFAULT_BASE_DELAY_MS = 100;
 const DEFAULT_MAX_ATTEMPTS = 2;
 const DEFAULT_TIMEOUT_MS = 2000;
-
-type MockToolFailure = {
-  message: string;
-  reason: ToolExecutionErrorReason;
-  retryable: boolean;
-};
-
-type MockToolBehavior = {
-  delayMs?: number;
-  failures?: MockToolFailure[];
-};
 
 type ToolExecutorRuntimeConfig = {
   baseDelayMs: number;
@@ -38,36 +31,36 @@ export class ToolExecutorService {
     maxAttempts: DEFAULT_MAX_ATTEMPTS,
   };
 
-  private readonly toolBehaviors = new Map<string, MockToolBehavior>();
-
-  constructor(private readonly orderRepository: OrderRepository) {}
+  constructor(private readonly registry: ToolRegistry) {}
 
   async execute(
     toolName: string,
     input: Record<string, unknown>,
   ): Promise<ToolExecutionResult> {
     const normalizedArguments = this.normalizeArguments(input);
-    const orderId = this.getOrderId(normalizedArguments);
-
-    if (orderId === null) {
-      return this.createErrorResult({
-        arguments: normalizedArguments,
-        attempt: 1,
-        durationMs: 0,
-        message: 'Tool input "orderId" is required.',
-        reason: 'INVALID_ARGUMENTS',
-        retryable: false,
-        toolName,
-      });
-    }
-
-    if (!this.isSupportedTool(toolName)) {
+    const tool = this.registry.find(toolName);
+    if (tool === undefined) {
       return this.createErrorResult({
         arguments: normalizedArguments,
         attempt: 1,
         durationMs: 0,
         message: `Unsupported tool: ${toolName}`,
         reason: 'TOOL_NOT_FOUND',
+        retryable: false,
+        toolName,
+      });
+    }
+    const validatedArguments = this.validateArguments(
+      normalizedArguments,
+      tool.definition,
+    );
+    if (typeof validatedArguments === 'string') {
+      return this.createErrorResult({
+        arguments: normalizedArguments,
+        attempt: 1,
+        durationMs: 0,
+        message: validatedArguments,
+        reason: 'INVALID_ARGUMENTS',
         retryable: false,
         toolName,
       });
@@ -83,7 +76,7 @@ export class ToolExecutorService {
       const startedAt = Date.now();
 
       try {
-        const data = await this.executeWithTimeout(toolName, orderId);
+        const data = await this.executeWithTimeout(tool, validatedArguments);
         const durationMs = Date.now() - startedAt;
 
         this.logger.log(
@@ -144,13 +137,6 @@ export class ToolExecutorService {
     });
   }
 
-  setToolBehavior(toolName: string, behavior: MockToolBehavior): void {
-    this.toolBehaviors.set(toolName, {
-      delayMs: behavior.delayMs,
-      failures: behavior.failures?.map((failure) => ({ ...failure })) ?? [],
-    });
-  }
-
   setRuntimeConfig(config: Partial<ToolExecutorRuntimeConfig>): void {
     this.runtimeConfig = {
       ...this.runtimeConfig,
@@ -164,12 +150,11 @@ export class ToolExecutorService {
       defaultTimeoutMs: DEFAULT_TIMEOUT_MS,
       maxAttempts: DEFAULT_MAX_ATTEMPTS,
     };
-    this.toolBehaviors.clear();
   }
 
   private async executeWithTimeout(
-    toolName: string,
-    orderId: string,
+    tool: RegisteredTool,
+    input: Record<string, string>,
   ): Promise<Record<string, unknown>> {
     let timeoutHandle: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -185,48 +170,11 @@ export class ToolExecutorService {
     });
 
     try {
-      return await Promise.race([
-        this.invokeTool(toolName, orderId),
-        timeoutPromise,
-      ]);
+      return await Promise.race([tool.execute(input), timeoutPromise]);
     } finally {
       if (timeoutHandle !== undefined) {
         clearTimeout(timeoutHandle);
       }
-    }
-  }
-
-  private async invokeTool(
-    toolName: string,
-    orderId: string,
-  ): Promise<Record<string, unknown>> {
-    const behavior = this.toolBehaviors.get(toolName);
-
-    if ((behavior?.delayMs ?? 0) > 0) {
-      await this.sleep(behavior?.delayMs ?? 0);
-    }
-
-    const plannedFailure = behavior?.failures?.shift();
-
-    if (plannedFailure !== undefined) {
-      throw new ToolExecutionFailure(
-        plannedFailure.reason,
-        plannedFailure.message,
-        plannedFailure.retryable,
-      );
-    }
-
-    switch (toolName) {
-      case 'getOrderStatus':
-        return this.orderRepository.getOrderStatus(orderId);
-      case 'getOrderItems':
-        return this.orderRepository.getOrderItems(orderId);
-      default:
-        throw new ToolExecutionFailure(
-          'TOOL_NOT_FOUND',
-          `Unsupported tool: ${toolName}`,
-          false,
-        );
     }
   }
 
@@ -236,18 +184,26 @@ export class ToolExecutorService {
     return { ...input };
   }
 
-  private getOrderId(input: Record<string, unknown>): string | null {
-    const orderId = input.orderId;
-
-    if (typeof orderId !== 'string' || orderId.trim() === '') {
-      return null;
+  private validateArguments(
+    input: Record<string, unknown>,
+    definition: ToolDefinition,
+  ): Record<string, string> | string {
+    for (const name of definition.inputSchema.required) {
+      if (typeof input[name] !== 'string' || input[name].trim() === '') {
+        return `Tool input "${name}" is required.`;
+      }
     }
-
-    return orderId;
-  }
-
-  private isSupportedTool(toolName: string): boolean {
-    return toolName === 'getOrderStatus' || toolName === 'getOrderItems';
+    const validated: Record<string, string> = {};
+    for (const [name, value] of Object.entries(input)) {
+      if (!Object.hasOwn(definition.inputSchema.properties, name)) {
+        return `Unexpected tool input "${name}".`;
+      }
+      if (typeof value !== 'string' || value.trim() === '') {
+        return `Tool input "${name}" must be a non-empty string.`;
+      }
+      validated[name] = value;
+    }
+    return validated;
   }
 
   private normalizeError(
@@ -306,15 +262,5 @@ export class ToolExecutorService {
     return new Promise((resolve) => {
       setTimeout(resolve, delayMs);
     });
-  }
-}
-
-class ToolExecutionFailure extends Error {
-  constructor(
-    readonly reason: ToolExecutionErrorReason,
-    message: string,
-    readonly retryable: boolean,
-  ) {
-    super(message);
   }
 }

@@ -253,3 +253,11 @@ Without that variable, the persistence suite is skipped and the existing HTTP do
 ## Live container logs
 
 Docker Compose includes Dozzle at http://localhost:8080, bound to the local machine and filtered to containers in this Compose project. Start it separately with `docker compose up -d llm-planner-dozzle`. Select `llm-planner-application` to follow application logs in real time. See the [Dozzle setup guide](https://dozzle.dev/guide/getting-started).
+
+## Tool registration and execution
+
+`src/tools/tool-registry.ts` is the static catalog: each entry pairs a tool definition with its implementation. `AskService` sends definitions from this registry to the LLM, and `ToolExecutorService` resolves the requested name from the same registry. To add a tool, add its definition and handler to this list; no separate name list or dispatch switch is needed.
+
+The executor validates the current string-only input schemas, dispatches calls, enforces the timeout, retries retryable failures, and returns structured results. `ToolExecutionFailure` lets an implementation classify an expected failure; unexpected exceptions are normalized without exposing their internal messages. Latency and failure simulations live in test doubles, not in the executor. The order repository still provides the study's in-memory order data.
+
+All registered tools are read-only. `Promise.race` limits how long the executor waits; it does **not** cancel the underlying operation. A timed-out attempt can finish later, including while a retry is running. Do not reuse this retry policy for operations with side effects without first defining cancellation/idempotency behavior. The timeout test explicitly verifies that the underlying operation can continue after the timeout result.

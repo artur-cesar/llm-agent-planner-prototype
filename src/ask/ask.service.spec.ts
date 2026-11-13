@@ -10,6 +10,7 @@ import { MessageRole } from '../conversations/message-role.enum';
 import { MessagesService } from '../conversations/messages.service';
 import { OrderRepository } from '../order/order.repository';
 import { ToolExecutorService } from '../tools/tool-executor.service';
+import { ToolRegistry } from '../tools/tool-registry';
 import { TurnRunnerService } from '../turn/turn-runner.service';
 import { AskService } from './ask.service';
 import { ASK_SYSTEM_PROMPT } from './system.prompt';
@@ -106,13 +107,14 @@ describe('AskService', () => {
     generateAnswer = jest.fn();
     const turnRunnerService = new TurnRunnerService(
       { generateAnswer },
-      new ToolExecutorService(new OrderRepository()),
+      new ToolExecutorService(new ToolRegistry(new OrderRepository())),
     );
 
     askService = new AskService(
       conversationsService,
       messagesService,
       turnRunnerService,
+      new ToolRegistry(new OrderRepository()),
     );
   });
 

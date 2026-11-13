@@ -6,7 +6,9 @@ import type {
 } from '../llm/llm-gateway.interface';
 
 import { OrderRepository } from '../order/order.repository';
+import { ToolExecutionFailure } from '../tools/tool-execution-failure';
 import { ToolExecutorService } from '../tools/tool-executor.service';
+import { ToolRegistry } from '../tools/tool-registry';
 import { TurnRunnerService } from './turn-runner.service';
 
 describe('TurnRunnerService', () => {
@@ -52,7 +54,7 @@ describe('TurnRunnerService', () => {
       .mockReturnValueOnce({ type: 'final_answer', content: 'PAID' });
     const runner = new TurnRunnerService(
       { generateAnswer },
-      new ToolExecutorService(new OrderRepository()),
+      new ToolExecutorService(new ToolRegistry(new OrderRepository())),
     );
     const input = {
       messages: [
@@ -266,15 +268,23 @@ describe('TurnRunnerService', () => {
           type: 'final_answer',
         },
       ],
-      (executor) => {
+      (executor, registry) => {
         executor.setRuntimeConfig({
           baseDelayMs: 0,
           defaultTimeoutMs: 5,
           maxAttempts: 1,
         });
-        executor.setToolBehavior('getOrderItems', {
-          delayMs: 10,
-        });
+        const tool = registry.find('getOrderItems');
+        if (tool === undefined) throw new Error('Missing tool');
+        jest
+          .spyOn(tool, 'execute')
+          .mockRejectedValue(
+            new ToolExecutionFailure(
+              'TIMEOUT',
+              'Tool execution timed out.',
+              true,
+            ),
+          );
       },
     );
 
@@ -440,7 +450,10 @@ describe('TurnRunnerService', () => {
 
 function createRunner(
   decisions: GenerateAnswerOutput[],
-  configureExecutor?: (executor: ToolExecutorService) => void,
+  configureExecutor?: (
+    executor: ToolExecutorService,
+    registry: ToolRegistry,
+  ) => void,
   limits?: {
     maxIterations?: number;
     maxLlmCalls?: number;
@@ -456,13 +469,14 @@ function createRunner(
     }),
   };
 
-  const toolExecutorService = new ToolExecutorService(new OrderRepository());
+  const registry = new ToolRegistry(new OrderRepository());
+  const toolExecutorService = new ToolExecutorService(registry);
   toolExecutorService.setRuntimeConfig({
     baseDelayMs: 0,
     defaultTimeoutMs: 20,
     maxAttempts: 2,
   });
-  configureExecutor?.(toolExecutorService);
+  configureExecutor?.(toolExecutorService, registry);
 
   const runner = new TurnRunnerService(gateway, toolExecutorService);
 

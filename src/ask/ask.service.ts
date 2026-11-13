@@ -12,7 +12,7 @@ import { ConversationsService } from '../conversations/conversations.service';
 import { MessageRole } from '../conversations/message-role.enum';
 import { toLlmMessage, toStoredMessage } from '../conversations/message.mapper';
 import { MessagesService } from '../conversations/messages.service';
-import { toolDefinitions } from '../tools/tool-definitions';
+import { ToolRegistry } from '../tools/tool-registry';
 import { TurnRunnerService } from '../turn/turn-runner.service';
 import { ASK_SYSTEM_PROMPT } from './system.prompt';
 
@@ -26,6 +26,7 @@ export class AskService {
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
     private readonly turnRunnerService: TurnRunnerService,
+    private readonly toolRegistry: ToolRegistry,
   ) {}
 
   async ask(input: AskRequestDto, userId?: string): Promise<AskResponseDto> {
@@ -68,7 +69,7 @@ export class AskService {
       const turnResult = await this.turnRunnerService.run({
         messages: messageHistory.map(toLlmMessage),
         systemPrompt: conversation.systemPrompt ?? ASK_SYSTEM_PROMPT,
-        tools: toolDefinitions,
+        tools: this.toolRegistry.definitions,
       });
       await this.messagesService.createMany(
         turnResult.generatedMessages.map((message) =>

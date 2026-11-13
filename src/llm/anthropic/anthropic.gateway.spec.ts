@@ -1,8 +1,11 @@
 import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages';
 
-import { toolDefinitions } from '../../tools/tool-definitions';
+import { OrderRepository } from '../../order/order.repository';
+import { ToolRegistry } from '../../tools/tool-registry';
 import { AnthropicGateway } from './anthropic.gateway';
 import { AnthropicClient } from './types';
+
+const toolDefinitions = new ToolRegistry(new OrderRepository()).definitions;
 
 describe('AnthropicGateway', () => {
   it('should map prompt input into an Anthropic message request', async () => {
