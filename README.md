@@ -92,12 +92,16 @@ Execution flow:
 ```bash
 AskService
   -> TurnRunnerService
-      -> Planner (LLM-driven)
-          -> decides next action
+      -> LlmGateway (Anthropic)
+          -> returns the next LLM decision
       -> ToolExecutorService
           -> executes tools
       -> loop until final answer
 ```
+`TurnRunnerService` owns the loop and calls `LlmGateway` directly. Planning means the model chooses the next action after each result; there is no separate planner class or precomputed execution plan.
+
+Messages in memory have explicit variants for user text, assistant text, tool calls, and tool results. `src/conversations/message.mapper.ts` converts these variants to and from the existing database format. Tool results remain structured in memory and are serialized only at the storage/provider boundaries. Invalid stored tool metadata raises an error with the message ID instead of silently creating empty tool identifiers. No database migration is needed for this refactor.
+
 The system can:
 - respond directly
 - call one tool
@@ -245,3 +249,7 @@ TEST_DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/TEST_DATABASE npm run test:
 ```
 
 Without that variable, the persistence suite is skipped and the existing HTTP documentation tests still run.
+
+## Live container logs
+
+Docker Compose includes Dozzle at http://localhost:8080, bound to the local machine and filtered to containers in this Compose project. Start it separately with `docker compose up -d llm-planner-dozzle`. Select `llm-planner-application` to follow application logs in real time. See the [Dozzle setup guide](https://dozzle.dev/guide/getting-started).

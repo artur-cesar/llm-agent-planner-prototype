@@ -7,6 +7,7 @@ import { AnthropicClient } from './types';
 describe('AnthropicGateway', () => {
   it('should map prompt input into an Anthropic message request', async () => {
     const create = jest.fn().mockResolvedValue({
+      stop_reason: 'end_turn',
       content: [
         {
           citations: null,
@@ -23,7 +24,9 @@ describe('AnthropicGateway', () => {
 
     await expect(
       gateway.generateAnswer({
-        messages: [{ content: 'Explain agents briefly.', role: 'user' }],
+        messages: [
+          { content: 'Explain agents briefly.', type: 'text', role: 'user' },
+        ],
         system: 'Stay within the tool-calling policy.',
         tools: toolDefinitions,
       }),
@@ -42,6 +45,7 @@ describe('AnthropicGateway', () => {
       ],
       model: 'claude-sonnet-4-20250514',
       system: 'Stay within the tool-calling policy.',
+      tool_choice: { type: 'auto', disable_parallel_tool_use: true },
       tools: [
         {
           description:
@@ -81,6 +85,7 @@ describe('AnthropicGateway', () => {
 
   it('should join multiple text content blocks', async () => {
     const create = jest.fn().mockResolvedValue({
+      stop_reason: 'end_turn',
       content: [
         {
           citations: null,
@@ -99,7 +104,7 @@ describe('AnthropicGateway', () => {
 
     await expect(
       gateway.generateAnswer({
-        messages: [{ content: 'test', role: 'user' }],
+        messages: [{ content: 'test', type: 'text', role: 'user' }],
         system: 'Test system prompt.',
         tools: [],
       }),
@@ -108,6 +113,7 @@ describe('AnthropicGateway', () => {
 
   it('should safely fallback when Anthropic returns no text blocks', async () => {
     const create = jest.fn().mockResolvedValue({
+      stop_reason: 'tool_use',
       content: [
         {
           id: 'toolu_test',
@@ -122,7 +128,7 @@ describe('AnthropicGateway', () => {
 
     await expect(
       gateway.generateAnswer({
-        messages: [{ content: 'test', role: 'user' }],
+        messages: [{ content: 'test', type: 'text', role: 'user' }],
         system: 'Test system prompt.',
         tools: [],
       }),
@@ -137,6 +143,7 @@ describe('AnthropicGateway', () => {
 
   it('should map Anthropic tool use responses into the shared contract', async () => {
     const create = jest.fn().mockResolvedValue({
+      stop_reason: 'tool_use',
       content: [
         {
           citations: null,
@@ -157,7 +164,11 @@ describe('AnthropicGateway', () => {
     await expect(
       gateway.generateAnswer({
         messages: [
-          { content: 'What is the status of order 123?', role: 'user' },
+          {
+            content: 'What is the status of order 123?',
+            type: 'text',
+            role: 'user',
+          },
         ],
         system: 'Use tools when needed.',
         tools: toolDefinitions,
@@ -169,6 +180,75 @@ describe('AnthropicGateway', () => {
       toolUseId: 'toolu_123',
       type: 'tool_call',
     });
+  });
+
+  it('should reject multiple tool calls before returning a decision', async () => {
+    const create = jest.fn().mockResolvedValue({
+      stop_reason: 'tool_use',
+      content: ['getOrderStatus', 'getOrderItems'].map((name, index) => ({
+        type: 'tool_use',
+        id: `toolu_${index}`,
+        name,
+        input: { orderId: '123' },
+      })),
+    });
+    await expect(
+      createGateway(create).generateAnswer({
+        messages: [
+          {
+            type: 'text',
+            role: 'user',
+            content: 'Status and items of order 123',
+          },
+        ],
+        tools: toolDefinitions,
+      }),
+    ).rejects.toThrow('Expected at most one tool call');
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])(
+    'should reject truncated responses, including tool calls=%s',
+    async (withTool) => {
+      const create = jest.fn().mockResolvedValue({
+        stop_reason: 'max_tokens',
+        content: withTool
+          ? [
+              {
+                type: 'tool_use',
+                id: 'toolu_partial',
+                name: 'getOrderStatus',
+                input: {},
+              },
+            ]
+          : [{ type: 'text', text: 'Order 123 is' }],
+      });
+      await expect(
+        createGateway(create).generateAnswer({
+          messages: [
+            { type: 'text', role: 'user', content: 'Status of order 123' },
+          ],
+          tools: toolDefinitions,
+        }),
+      ).rejects.toThrow('truncated by the token limit');
+    },
+  );
+
+  it('should omit tool choice when no tools are available', async () => {
+    const create = jest
+      .fn<
+        ReturnType<AnthropicClient['messages']['create']>,
+        Parameters<AnthropicClient['messages']['create']>
+      >()
+      .mockResolvedValue({
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: 'Hello.', citations: null }],
+      });
+    await createGateway(create).generateAnswer({
+      messages: [{ type: 'text', role: 'user', content: 'Hello' }],
+      tools: [],
+    });
+    expect(create.mock.calls[0][0]).not.toHaveProperty('tool_choice');
   });
 
   it('should fail clearly when credentials are missing', async () => {
@@ -184,7 +264,7 @@ describe('AnthropicGateway', () => {
 
     await expect(
       gateway.generateAnswer({
-        messages: [{ content: 'test', role: 'user' }],
+        messages: [{ content: 'test', type: 'text', role: 'user' }],
         system: 'Test system prompt.',
         tools: [],
       }),
@@ -196,6 +276,7 @@ describe('AnthropicGateway', () => {
 
   it('should map persisted assistant tool calls and tool results into Anthropic messages', async () => {
     const create = jest.fn().mockResolvedValue({
+      stop_reason: 'end_turn',
       content: [
         {
           citations: null,
@@ -210,8 +291,13 @@ describe('AnthropicGateway', () => {
     await expect(
       gateway.generateAnswer({
         messages: [
-          { content: 'What is the status of order 123?', role: 'user' },
           {
+            content: 'What is the status of order 123?',
+            type: 'text',
+            role: 'user',
+          },
+          {
+            type: 'tool_call',
             arguments: { orderId: '123' },
             content: 'Checking the order for you.',
             role: 'assistant',
@@ -219,9 +305,17 @@ describe('AnthropicGateway', () => {
             toolUseId: 'toolu_123',
           },
           {
-            content: '{"orderId":"123","status":"PAID"}',
+            type: 'tool_result',
             role: 'tool',
-            toolName: 'getOrderStatus',
+            result: {
+              type: 'tool_success',
+              success: true,
+              toolName: 'getOrderStatus',
+              arguments: { orderId: '123' },
+              attempt: 1,
+              durationMs: 0,
+              data: { orderId: '123', status: 'PAID' },
+            },
             toolUseId: 'toolu_123',
           },
         ],
@@ -258,7 +352,15 @@ describe('AnthropicGateway', () => {
           {
             content: [
               {
-                content: '{"orderId":"123","status":"PAID"}',
+                content: JSON.stringify({
+                  type: 'tool_success',
+                  success: true,
+                  toolName: 'getOrderStatus',
+                  arguments: { orderId: '123' },
+                  attempt: 1,
+                  durationMs: 0,
+                  data: { orderId: '123', status: 'PAID' },
+                }),
                 tool_use_id: 'toolu_123',
                 type: 'tool_result',
               },

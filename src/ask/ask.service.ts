@@ -5,19 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import type { LlmMessage } from '../llm/llm-gateway.interface';
 import type { AskRequestDto } from './dto/ask-request.dto';
 import type { AskResponseDto } from './dto/ask-response.dto';
 
 import { ConversationsService } from '../conversations/conversations.service';
-import { Message } from '../conversations/entities/message.entity';
 import { MessageRole } from '../conversations/message-role.enum';
+import { toLlmMessage, toStoredMessage } from '../conversations/message.mapper';
 import { MessagesService } from '../conversations/messages.service';
 import { toolDefinitions } from '../tools/tool-definitions';
-import {
-  TurnRunnerGeneratedMessage,
-  TurnRunnerService,
-} from '../turn/turn-runner.service';
+import { TurnRunnerService } from '../turn/turn-runner.service';
 import { ASK_SYSTEM_PROMPT } from './system.prompt';
 
 const DEFAULT_USER_ID = 'anonymous-user';
@@ -70,13 +66,14 @@ export class AskService {
       );
 
       const turnResult = await this.turnRunnerService.run({
-        messages: this.mapMessagesForLlm(messageHistory),
+        messages: messageHistory.map(toLlmMessage),
         systemPrompt: conversation.systemPrompt ?? ASK_SYSTEM_PROMPT,
         tools: toolDefinitions,
       });
-      await this.persistGeneratedMessages(
-        conversation.id,
-        turnResult.generatedMessages,
+      await this.messagesService.createMany(
+        turnResult.generatedMessages.map((message) =>
+          toStoredMessage(conversation.id, message),
+        ),
       );
 
       return {
@@ -86,22 +83,6 @@ export class AskService {
     } finally {
       this.activeConversations.delete(conversation.id);
     }
-  }
-
-  private mapMessagesForLlm(messages: Message[]): LlmMessage[] {
-    return messages.map((message) => {
-      const metadata = this.readMetadata(message.metadata);
-      const toolName = this.readString(metadata.toolName);
-      const toolUseId = this.readString(metadata.toolUseId);
-
-      return {
-        arguments: this.readArguments(metadata.arguments),
-        content: message.content,
-        role: message.role,
-        toolName,
-        toolUseId,
-      };
-    });
   }
 
   private async resolveConversation(
@@ -127,76 +108,5 @@ export class AskService {
       systemPrompt: ASK_SYSTEM_PROMPT,
       userId,
     });
-  }
-
-  private async persistGeneratedMessages(
-    conversationId: string,
-    messages: TurnRunnerGeneratedMessage[],
-  ): Promise<void> {
-    await this.messagesService.createMany(
-      messages.map((message) => ({
-        content: message.content,
-        conversationId,
-        metadata: message.metadata ?? null,
-        role: this.mapRole(message.role),
-      })),
-    );
-  }
-
-  private mapRole(role: LlmMessage['role']): MessageRole {
-    switch (role) {
-      case 'assistant':
-        return MessageRole.Assistant;
-      case 'tool':
-        return MessageRole.Tool;
-      case 'user':
-        return MessageRole.User;
-    }
-  }
-
-  private readArguments(
-    value: unknown,
-  ): Record<string, unknown> | null | undefined {
-    if (value === undefined) {
-      return undefined;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      return null;
-    }
-
-    return value as Record<string, unknown>;
-  }
-
-  private readMetadata(value: unknown): Record<string, unknown> {
-    if (value === null || value === undefined) {
-      return {};
-    }
-
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      return {};
-    }
-
-    return value as Record<string, unknown>;
-  }
-
-  private readString(value: unknown): string | null | undefined {
-    if (value === undefined) {
-      return undefined;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    if (typeof value !== 'string') {
-      return null;
-    }
-
-    return value;
   }
 }

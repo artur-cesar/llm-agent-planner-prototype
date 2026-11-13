@@ -37,9 +37,23 @@ services:
     networks:
       - llm-planner-network
 
+  llm-planner-dozzle:
+    image: amir20/dozzle:latest
+    container_name: llm-planner-dozzle
+    ports:
+      - '127.0.0.1:8080:8080'
+    environment:
+      DOZZLE_FILTER: 'label=com.docker.compose.project=${COMPOSE_PROJECT_NAME:-llm-agent-planner-prototype}'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - llm-planner-dozzle-data:/data
+    networks:
+      - llm-planner-network
+
 volumes:
   llm-planner-database-data:
   llm-planner-node-modules:
+  llm-planner-dozzle-data:
 
 networks:
   llm-planner-network:

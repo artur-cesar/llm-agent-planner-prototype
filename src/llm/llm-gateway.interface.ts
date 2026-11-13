@@ -1,14 +1,42 @@
-import type { ToolDefinition } from '../tools/tool-definition.interface';
+import type {
+  ToolDefinition,
+  ToolExecutionResult,
+} from '../tools/tool-definition.interface';
 
-export type LlmMessageRole = 'assistant' | 'tool' | 'user';
-
-export interface LlmMessage {
-  arguments?: Record<string, unknown> | null;
+export interface UserMessage {
+  type: 'text';
+  role: 'user';
   content: string;
-  role: LlmMessageRole;
-  toolName?: string | null;
-  toolUseId?: string | null;
 }
+
+export interface AssistantMessage {
+  type: 'text';
+  role: 'assistant';
+  content: string;
+}
+
+export interface ToolCallMessage {
+  type: 'tool_call';
+  role: 'assistant';
+  content: string;
+  arguments: Record<string, unknown>;
+  toolName: string;
+  toolUseId: string;
+}
+
+export interface ToolResultMessage {
+  type: 'tool_result';
+  role: 'tool';
+  toolUseId: string;
+  result: ToolExecutionResult;
+}
+
+export type LlmMessage =
+  | UserMessage
+  | AssistantMessage
+  | ToolCallMessage
+  | ToolResultMessage;
+export type GeneratedMessage = Exclude<LlmMessage, UserMessage>;
 
 export interface GenerateAnswerInput {
   messages: LlmMessage[];
@@ -25,7 +53,7 @@ export interface GenerateAnswerToolCallResponse {
   arguments: Record<string, unknown>;
   content: string;
   toolName: string;
-  toolUseId: string | null;
+  toolUseId: string;
   type: 'tool_call';
 }
 

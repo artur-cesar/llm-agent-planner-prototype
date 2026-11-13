@@ -1,6 +1,9 @@
 import { InternalServerErrorException } from '@nestjs/common';
 
-import type { Planner, PlannerDecision } from '../planner/planner.interface';
+import type {
+  LlmGateway,
+  GenerateAnswerOutput,
+} from '../llm/llm-gateway.interface';
 
 import { OrderRepository } from '../order/order.repository';
 import { ToolExecutorService } from '../tools/tool-executor.service';
@@ -17,7 +20,7 @@ describe('TurnRunnerService', () => {
 
     await expect(
       runner.run({
-        messages: [{ content: 'hello', role: 'user' }],
+        messages: [{ content: 'hello', type: 'text', role: 'user' }],
         systemPrompt: 'test system',
         tools: [],
       }),
@@ -27,9 +30,68 @@ describe('TurnRunnerService', () => {
         {
           content: 'Direct answer',
           role: 'assistant',
+          type: 'text',
         },
       ],
     });
+  });
+
+  it('should send configuration and the generated tool history directly to the gateway', async () => {
+    const generateAnswer = jest
+      .fn<
+        ReturnType<LlmGateway['generateAnswer']>,
+        Parameters<LlmGateway['generateAnswer']>
+      >()
+      .mockReturnValueOnce({
+        type: 'tool_call',
+        toolName: 'getOrderStatus',
+        toolUseId: 'toolu_123',
+        arguments: { orderId: '123' },
+        content: 'Checking.',
+      })
+      .mockReturnValueOnce({ type: 'final_answer', content: 'PAID' });
+    const runner = new TurnRunnerService(
+      { generateAnswer },
+      new ToolExecutorService(new OrderRepository()),
+    );
+    const input = {
+      messages: [
+        {
+          type: 'text' as const,
+          role: 'user' as const,
+          content: 'Status of 123',
+        },
+      ],
+      systemPrompt: 'Use tools.',
+      tools: [],
+    };
+    await runner.run(input);
+    expect(generateAnswer.mock.calls[0][0]).toEqual({
+      messages: input.messages,
+      system: 'Use tools.',
+      tools: [],
+    });
+    expect(generateAnswer.mock.calls[1][0].messages).toEqual([
+      ...input.messages,
+      {
+        type: 'tool_call',
+        role: 'assistant',
+        toolName: 'getOrderStatus',
+        toolUseId: 'toolu_123',
+        arguments: { orderId: '123' },
+        content: 'Checking.',
+      },
+      expect.objectContaining({
+        type: 'tool_result',
+        role: 'tool',
+        toolUseId: 'toolu_123',
+      }),
+    ]);
+    const toolResult = generateAnswer.mock.calls[1][0].messages[2];
+    if (toolResult.type !== 'tool_result')
+      throw new Error('Expected tool result');
+    expect(toolResult.result.success).toBe(true);
+    expect(input.messages).toHaveLength(1);
   });
 
   it('should execute a single tool call and then return the final answer', async () => {
@@ -48,7 +110,13 @@ describe('TurnRunnerService', () => {
     ]);
 
     const result = await runner.run({
-      messages: [{ content: 'What is the status of order 123?', role: 'user' }],
+      messages: [
+        {
+          content: 'What is the status of order 123?',
+          type: 'text',
+          role: 'user',
+        },
+      ],
       systemPrompt: 'test system',
       tools: [],
     });
@@ -59,31 +127,20 @@ describe('TurnRunnerService', () => {
         {
           arguments: { orderId: '123' },
           content: 'Checking the order for you.',
-          metadata: {
-            arguments: { orderId: '123' },
-            toolName: 'getOrderStatus',
-            toolUseId: 'toolu_status_123',
-          },
           role: 'assistant',
           toolName: 'getOrderStatus',
           toolUseId: 'toolu_status_123',
         },
         {
-          metadata: {
+          result: {
             arguments: { orderId: '123' },
-            result: {
-              arguments: { orderId: '123' },
-              attempt: 1,
-              data: { orderId: '123', status: 'PAID' },
-              success: true,
-              toolName: 'getOrderStatus',
-              type: 'tool_success',
-            },
+            attempt: 1,
+            data: { orderId: '123', status: 'PAID' },
+            success: true,
             toolName: 'getOrderStatus',
-            toolUseId: 'toolu_status_123',
+            type: 'tool_success',
           },
           role: 'tool',
-          toolName: 'getOrderStatus',
           toolUseId: 'toolu_status_123',
         },
         {
@@ -93,20 +150,17 @@ describe('TurnRunnerService', () => {
       ],
     });
 
-    expect(JSON.parse(result.generatedMessages[1].content)).toMatchObject({
+    const toolResult = result.generatedMessages[1];
+    if (toolResult.type !== 'tool_result')
+      throw new Error('Expected tool result');
+    expect(toolResult.result).toMatchObject({
       arguments: { orderId: '123' },
       data: { orderId: '123', status: 'PAID' },
       success: true,
       toolName: 'getOrderStatus',
       type: 'tool_success',
     });
-    expect(
-      typeof (
-        JSON.parse(result.generatedMessages[1].content) as {
-          durationMs: number;
-        }
-      ).durationMs,
-    ).toBe('number');
+    expect(typeof toolResult.result.durationMs).toBe('number');
   });
 
   it('should execute multiple tool calls in sequence and return the combined final answer', async () => {
@@ -137,6 +191,7 @@ describe('TurnRunnerService', () => {
         messages: [
           {
             content: 'What is the status and items of order 123?',
+            type: 'text',
             role: 'user',
           },
         ],
@@ -155,15 +210,12 @@ describe('TurnRunnerService', () => {
           toolUseId: 'toolu_status_123',
         },
         {
-          metadata: {
-            result: {
-              success: true,
-              toolName: 'getOrderStatus',
-              type: 'tool_success',
-            },
+          result: {
+            success: true,
+            toolName: 'getOrderStatus',
+            type: 'tool_success',
           },
           role: 'tool',
-          toolName: 'getOrderStatus',
           toolUseId: 'toolu_status_123',
         },
         {
@@ -174,15 +226,12 @@ describe('TurnRunnerService', () => {
           toolUseId: 'toolu_items_123',
         },
         {
-          metadata: {
-            result: {
-              success: true,
-              toolName: 'getOrderItems',
-              type: 'tool_success',
-            },
+          result: {
+            success: true,
+            toolName: 'getOrderItems',
+            type: 'tool_success',
           },
           role: 'tool',
-          toolName: 'getOrderItems',
           toolUseId: 'toolu_items_123',
         },
         {
@@ -233,6 +282,7 @@ describe('TurnRunnerService', () => {
       messages: [
         {
           content: 'What is the status and items of order 123?',
+          type: 'text',
           role: 'user',
         },
       ],
@@ -249,30 +299,24 @@ describe('TurnRunnerService', () => {
       toolName: 'getOrderStatus',
     });
     expect(result.generatedMessages[1]).toMatchObject({
-      metadata: {
-        result: {
-          success: true,
-          type: 'tool_success',
-        },
+      result: {
+        success: true,
+        type: 'tool_success',
       },
       role: 'tool',
-      toolName: 'getOrderStatus',
     });
     expect(result.generatedMessages[2]).toMatchObject({
       role: 'assistant',
       toolName: 'getOrderItems',
     });
     expect(result.generatedMessages[3]).toMatchObject({
-      metadata: {
-        result: {
-          reason: 'TIMEOUT',
-          retryable: true,
-          success: false,
-          type: 'tool_error',
-        },
+      result: {
+        reason: 'TIMEOUT',
+        retryable: true,
+        success: false,
+        type: 'tool_error',
       },
       role: 'tool',
-      toolName: 'getOrderItems',
     });
     expect(result.generatedMessages[4]).toMatchObject({
       content:
@@ -306,7 +350,11 @@ describe('TurnRunnerService', () => {
     await expect(
       runner.run({
         messages: [
-          { content: 'What is the status of order 123?', role: 'user' },
+          {
+            content: 'What is the status of order 123?',
+            type: 'text',
+            role: 'user',
+          },
         ],
         systemPrompt: 'test system',
         tools: [],
@@ -341,6 +389,7 @@ describe('TurnRunnerService', () => {
         messages: [
           {
             content: 'What is the status and items of order 123?',
+            type: 'text',
             role: 'user',
           },
         ],
@@ -374,7 +423,11 @@ describe('TurnRunnerService', () => {
     await expect(
       runner.run({
         messages: [
-          { content: 'What is the status of order 123?', role: 'user' },
+          {
+            content: 'What is the status of order 123?',
+            type: 'text',
+            role: 'user',
+          },
         ],
         systemPrompt: 'test system',
         tools: [],
@@ -386,7 +439,7 @@ describe('TurnRunnerService', () => {
 });
 
 function createRunner(
-  decisions: PlannerDecision[],
+  decisions: GenerateAnswerOutput[],
   configureExecutor?: (executor: ToolExecutorService) => void,
   limits?: {
     maxIterations?: number;
@@ -394,12 +447,13 @@ function createRunner(
     maxToolCalls?: number;
   },
 ): TurnRunnerService {
-  const planner: Planner = {
-    decide: jest
-      .fn<Promise<PlannerDecision>, []>()
-      .mockImplementation(() =>
-        Promise.resolve(decisions.shift() as PlannerDecision),
-      ),
+  const gateway: LlmGateway = {
+    generateAnswer: jest.fn(() => {
+      const decision = decisions.shift();
+      if (decision === undefined)
+        throw new Error('No programmed decision remains');
+      return Promise.resolve(decision);
+    }),
   };
 
   const toolExecutorService = new ToolExecutorService(new OrderRepository());
@@ -410,7 +464,7 @@ function createRunner(
   });
   configureExecutor?.(toolExecutorService);
 
-  const runner = new TurnRunnerService(planner as never, toolExecutorService);
+  const runner = new TurnRunnerService(gateway, toolExecutorService);
 
   if (limits?.maxIterations !== undefined) {
     (runner as unknown as { maxIterations: number }).maxIterations =

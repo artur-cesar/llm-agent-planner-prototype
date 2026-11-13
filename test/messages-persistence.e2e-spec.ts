@@ -1,12 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 
+import type { LlmGateway } from '../src/llm/llm-gateway.interface';
+
+import { AskService } from '../src/ask/ask.service';
+import { ConversationsService } from '../src/conversations/conversations.service';
 import { Conversation } from '../src/conversations/entities/conversation.entity';
 import { Message } from '../src/conversations/entities/message.entity';
 import { MessageRole } from '../src/conversations/message-role.enum';
 import { MessagesService } from '../src/conversations/messages.service';
 import { CreateConversationPersistence20260421191830 } from '../src/database/migrations/20260421191830-CreateConversationPersistence';
 import { AddMessageSequence20261113120000 } from '../src/database/migrations/20261113120000-AddMessageSequence';
+import { OrderRepository } from '../src/order/order.repository';
+import { ToolExecutorService } from '../src/tools/tool-executor.service';
+import { TurnRunnerService } from '../src/turn/turn-runner.service';
 
 const describeDatabase = process.env.TEST_DATABASE_URL
   ? describe
@@ -95,6 +102,92 @@ describeDatabase('message persistence (isolated PostgreSQL database)', () => {
         (message) => message.content,
       ),
     ).toEqual(['First', 'Second', 'Tool call', 'Tool result', 'Final answer']);
+  });
+
+  it('persists a complete sequential turn and reloads its typed history on a follow-up', async () => {
+    const generateAnswer = jest
+      .fn<
+        ReturnType<LlmGateway['generateAnswer']>,
+        Parameters<LlmGateway['generateAnswer']>
+      >()
+      .mockReturnValueOnce({
+        type: 'tool_call',
+        toolName: 'getOrderStatus',
+        toolUseId: 'toolu_status',
+        arguments: { orderId: '123' },
+        content: 'Checking status.',
+      })
+      .mockReturnValueOnce({
+        type: 'tool_call',
+        toolName: 'getOrderItems',
+        toolUseId: 'toolu_items',
+        arguments: { orderId: '123' },
+        content: 'Checking items.',
+      })
+      .mockReturnValueOnce({
+        type: 'final_answer',
+        content: 'PAID; Keyboard, Mouse.',
+      })
+      .mockReturnValueOnce({
+        type: 'final_answer',
+        content: 'The same order is PAID.',
+      });
+    const conversations = new ConversationsService(
+      database.getRepository(Conversation),
+    );
+    const runner = new TurnRunnerService(
+      { generateAnswer },
+      new ToolExecutorService(new OrderRepository()),
+    );
+    const ask = new AskService(conversations, service, runner);
+    const first = await ask.ask(
+      { prompt: 'Status and items of order 123' },
+      'test-owner',
+    );
+    expect(first.content).toBe('PAID; Keyboard, Mouse.');
+    const stored = await service.findByConversationId(first.conversationId);
+    expect(stored.map((message) => message.role)).toEqual([
+      'user',
+      'assistant',
+      'tool',
+      'assistant',
+      'tool',
+      'assistant',
+    ]);
+    expect(stored[1].metadata?.toolUseId).toBe('toolu_status');
+    expect(stored[2].metadata?.toolUseId).toBe('toolu_status');
+    expect(stored[3].metadata?.toolUseId).toBe('toolu_items');
+    expect(stored[4].metadata?.toolUseId).toBe('toolu_items');
+    const reloadedAsk = new AskService(
+      conversations,
+      new MessagesService(database.getRepository(Message)),
+      runner,
+    );
+    await reloadedAsk.ask(
+      { conversationId: first.conversationId, prompt: 'And its status again?' },
+      'test-owner',
+    );
+    const history = generateAnswer.mock.calls[3][0].messages;
+    expect(history).toHaveLength(7);
+    expect(history[1]).toMatchObject({
+      type: 'tool_call',
+      toolUseId: 'toolu_status',
+    });
+    expect(history[2]).toMatchObject({
+      type: 'tool_result',
+      toolUseId: 'toolu_status',
+    });
+    expect(history[3]).toMatchObject({
+      type: 'tool_call',
+      toolUseId: 'toolu_items',
+    });
+    expect(history[4]).toMatchObject({
+      type: 'tool_result',
+      toolUseId: 'toolu_items',
+    });
+    expect(
+      await service.findByConversationId(first.conversationId),
+    ).toHaveLength(8);
   });
 
   it('backfills legacy rows, supports new inserts, and can revert and reapply the migration', async () => {

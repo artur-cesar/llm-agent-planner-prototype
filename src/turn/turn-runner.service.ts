@@ -1,22 +1,23 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 
-import type { LlmMessage } from '../llm/llm-gateway.interface';
+import type {
+  LlmGateway,
+  LlmMessage,
+  GeneratedMessage,
+} from '../llm/llm-gateway.interface';
 import type { ToolDefinition } from '../tools/tool-definition.interface';
 
-import { LlmPlanner } from '../planner/llm-planner';
+import { LLM_GATEWAY } from '../llm/llm.constants';
 import { ToolExecutorService } from '../tools/tool-executor.service';
 
 const DEFAULT_MAX_ITERATIONS = 5;
 const DEFAULT_MAX_LLM_CALLS = 5;
 const DEFAULT_MAX_TOOL_CALLS = 3;
-
-export interface TurnRunnerGeneratedMessage extends LlmMessage {
-  metadata?: Record<string, unknown> | null;
-}
 
 export interface TurnRunnerInput {
   messages: LlmMessage[];
@@ -26,7 +27,7 @@ export interface TurnRunnerInput {
 
 export interface TurnRunnerOutput {
   content: string;
-  generatedMessages: TurnRunnerGeneratedMessage[];
+  generatedMessages: GeneratedMessage[];
 }
 
 @Injectable()
@@ -38,13 +39,14 @@ export class TurnRunnerService {
   private readonly maxToolCalls = DEFAULT_MAX_TOOL_CALLS;
 
   constructor(
-    private readonly planner: LlmPlanner,
+    @Inject(LLM_GATEWAY)
+    private readonly llmGateway: LlmGateway,
     private readonly toolExecutorService: ToolExecutorService,
   ) {}
 
   async run(input: TurnRunnerInput): Promise<TurnRunnerOutput> {
     const workingMessages = [...input.messages];
-    const generatedMessages: TurnRunnerGeneratedMessage[] = [];
+    const generatedMessages: GeneratedMessage[] = [];
     let llmCalls = 0;
     let toolCalls = 0;
 
@@ -61,9 +63,9 @@ export class TurnRunnerService {
 
       llmCalls += 1;
 
-      const decision = await this.planner.decide({
-        messages: workingMessages,
-        systemPrompt: input.systemPrompt,
+      const decision = await this.llmGateway.generateAnswer({
+        messages: [...workingMessages],
+        system: input.systemPrompt,
         tools: input.tools,
       });
 
@@ -74,9 +76,10 @@ export class TurnRunnerService {
       );
 
       if (decision.type === 'final_answer') {
-        const finalAnswerMessage: TurnRunnerGeneratedMessage = {
+        const finalAnswerMessage: GeneratedMessage = {
           content: decision.content,
           role: 'assistant',
+          type: 'text',
         };
 
         generatedMessages.push(finalAnswerMessage);
@@ -91,15 +94,11 @@ export class TurnRunnerService {
         };
       }
 
-      const assistantToolCallMessage: TurnRunnerGeneratedMessage = {
+      const assistantToolCallMessage: GeneratedMessage = {
         arguments: decision.arguments,
         content: decision.content,
-        metadata: {
-          arguments: decision.arguments,
-          toolName: decision.toolName,
-          toolUseId: decision.toolUseId,
-        },
         role: 'assistant',
+        type: 'tool_call',
         toolName: decision.toolName,
         toolUseId: decision.toolUseId,
       };
@@ -138,17 +137,11 @@ export class TurnRunnerService {
         );
       }
 
-      const toolResultMessage: TurnRunnerGeneratedMessage = {
-        content: JSON.stringify(executionResult),
-        metadata: {
-          arguments: decision.arguments,
-          result: executionResult,
-          toolName: executionResult.toolName,
-          toolUseId: decision.toolUseId,
-        },
+      const toolResultMessage: GeneratedMessage = {
+        type: 'tool_result',
         role: 'tool',
-        toolName: executionResult.toolName,
         toolUseId: decision.toolUseId,
+        result: executionResult,
       };
 
       workingMessages.push(toolResultMessage);

@@ -1,4 +1,7 @@
-import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages';
+import type {
+  ContentBlock,
+  StopReason,
+} from '@anthropic-ai/sdk/resources/messages';
 
 import Anthropic from '@anthropic-ai/sdk';
 import { Injectable, Logger } from '@nestjs/common';
@@ -60,8 +63,19 @@ export class AnthropicGateway implements LlmGateway {
       model,
       system: input.system,
       tools: input.tools.map((tool) => this.mapToolDefinition(tool)),
+      ...(input.tools.length > 0
+        ? {
+            tool_choice: {
+              type: 'auto' as const,
+              disable_parallel_tool_use: true as const,
+            },
+          }
+        : {}),
     });
-    const mappedResponse = this.mapResponse(response.content);
+    const mappedResponse = this.mapResponse(
+      response.content,
+      response.stop_reason,
+    );
 
     this.logger.log(
       `anthropic:response type=${mappedResponse.type}${
@@ -107,12 +121,12 @@ export class AnthropicGateway implements LlmGateway {
   }
 
   private mapMessage(message: LlmMessage) {
-    if (message.role === 'tool') {
+    if (message.type === 'tool_result') {
       return {
         content: [
           {
-            content: message.content,
-            tool_use_id: message.toolUseId ?? '',
+            content: JSON.stringify(message.result),
+            tool_use_id: message.toolUseId,
             type: 'tool_result' as const,
           },
         ],
@@ -120,13 +134,7 @@ export class AnthropicGateway implements LlmGateway {
       };
     }
 
-    if (
-      message.role === 'assistant' &&
-      message.toolName !== null &&
-      message.toolName !== undefined &&
-      message.toolUseId !== null &&
-      message.toolUseId !== undefined
-    ) {
+    if (message.type === 'tool_call') {
       const content: Array<
         | { text: string; type: 'text' }
         | {
@@ -146,7 +154,7 @@ export class AnthropicGateway implements LlmGateway {
 
       content.push({
         id: message.toolUseId,
-        input: message.arguments ?? {},
+        input: message.arguments,
         name: message.toolName,
         type: 'tool_use',
       });
@@ -171,8 +179,19 @@ export class AnthropicGateway implements LlmGateway {
     };
   }
 
-  private mapResponse(content: ContentBlock[]): GenerateAnswerOutput {
-    const toolUseBlock = content.find((block) => block.type === 'tool_use');
+  private mapResponse(
+    content: ContentBlock[],
+    stopReason: StopReason | null,
+  ): GenerateAnswerOutput {
+    if (stopReason === 'max_tokens') {
+      throw new Error('Anthropic response was truncated by the token limit.');
+    }
+
+    const toolCalls = content.filter((block) => block.type === 'tool_use');
+    if (toolCalls.length > 1) {
+      throw new Error('Expected at most one tool call per Anthropic response.');
+    }
+    const toolUseBlock = toolCalls[0];
 
     if (toolUseBlock?.type === 'tool_use') {
       return {

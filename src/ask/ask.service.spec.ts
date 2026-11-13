@@ -9,7 +9,6 @@ import { Message } from '../conversations/entities/message.entity';
 import { MessageRole } from '../conversations/message-role.enum';
 import { MessagesService } from '../conversations/messages.service';
 import { OrderRepository } from '../order/order.repository';
-import { LlmPlanner } from '../planner/llm-planner';
 import { ToolExecutorService } from '../tools/tool-executor.service';
 import { TurnRunnerService } from '../turn/turn-runner.service';
 import { AskService } from './ask.service';
@@ -105,9 +104,8 @@ describe('AskService', () => {
     );
 
     generateAnswer = jest.fn();
-    const llmPlanner = new LlmPlanner({ generateAnswer });
     const turnRunnerService = new TurnRunnerService(
-      llmPlanner,
+      { generateAnswer },
       new ToolExecutorService(new OrderRepository()),
     );
 
@@ -272,6 +270,7 @@ describe('AskService', () => {
     expect(generateAnswer.mock.calls[1][0].messages).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          type: 'text',
           role: 'user',
           content: 'What is the status of my order?',
         }),
@@ -280,7 +279,7 @@ describe('AskService', () => {
           content:
             'I can help with that. Which order ID should I check for you?',
         }),
-        expect.objectContaining({ role: 'user', content: '123' }),
+        expect.objectContaining({ type: 'text', role: 'user', content: '123' }),
       ]),
     );
     expect(messagesService.findByConversationId.mock.calls).toContainEqual([
