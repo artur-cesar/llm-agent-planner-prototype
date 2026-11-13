@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OrderRepository } from '../order/order.repository';
 import {
   ToolExecutionErrorReason,
+  ToolExecutionErrorResult,
   ToolExecutionResult,
 } from './tool-definition.interface';
 
@@ -255,7 +256,7 @@ export class ToolExecutorService {
     input: Record<string, unknown>,
     attempt: number,
     durationMs: number,
-  ) {
+  ): ToolExecutionErrorResult {
     if (error instanceof ToolExecutionFailure) {
       return this.createErrorResult({
         arguments: input,
@@ -287,7 +288,7 @@ export class ToolExecutorService {
     reason: ToolExecutionErrorReason;
     retryable: boolean;
     toolName: string;
-  }): ToolExecutionResult {
+  }): ToolExecutionErrorResult {
     return {
       arguments: input.arguments,
       attempt: input.attempt,
