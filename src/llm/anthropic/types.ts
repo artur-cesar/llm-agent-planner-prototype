@@ -1,4 +1,7 @@
-import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages';
+import type {
+  ContentBlock,
+  StopReason,
+} from '@anthropic-ai/sdk/resources/messages';
 
 type AnthropicToolDefinition = {
   description: string;
@@ -48,8 +51,10 @@ export interface AnthropicClient {
       model: string;
       system?: string;
       tools?: AnthropicToolDefinition[];
+      tool_choice?: { type: 'auto'; disable_parallel_tool_use: true };
     }): Promise<{
       content: ContentBlock[];
+      stop_reason: StopReason | null;
     }>;
   };
 }

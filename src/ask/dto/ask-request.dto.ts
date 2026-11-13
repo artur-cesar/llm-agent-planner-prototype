@@ -27,5 +27,5 @@ export class AskRequestDto {
   @IsNotEmpty()
   @MinLength(3)
   @MaxLength(5000)
-  prompt: string;
+  prompt!: string;
 }

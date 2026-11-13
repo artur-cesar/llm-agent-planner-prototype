@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Generated,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -14,6 +15,10 @@ import { Conversation } from './conversation.entity';
 export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'bigint', unique: true })
+  @Generated('increment')
+  sequence: string;
 
   @Column({ type: 'text' })
   content: string;

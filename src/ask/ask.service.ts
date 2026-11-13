@@ -1,32 +1,32 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
-import type { LlmMessage } from '../llm/llm-gateway.interface';
 import type { AskRequestDto } from './dto/ask-request.dto';
 import type { AskResponseDto } from './dto/ask-response.dto';
 
 import { ConversationsService } from '../conversations/conversations.service';
-import { Message } from '../conversations/entities/message.entity';
 import { MessageRole } from '../conversations/message-role.enum';
+import { toLlmMessage, toStoredMessage } from '../conversations/message.mapper';
 import { MessagesService } from '../conversations/messages.service';
-import { toolDefinitions } from '../tools/tool-definitions';
-import {
-  TurnRunnerGeneratedMessage,
-  TurnRunnerService,
-} from '../turn/turn-runner.service';
+import { ToolRegistry } from '../tools/tool-registry';
+import { TurnRunnerService } from '../turn/turn-runner.service';
 import { ASK_SYSTEM_PROMPT } from './system.prompt';
 
 const DEFAULT_USER_ID = 'anonymous-user';
 
 @Injectable()
 export class AskService {
+  private readonly activeConversations = new Set<string>();
+
   constructor(
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
     private readonly turnRunnerService: TurnRunnerService,
+    private readonly toolRegistry: ToolRegistry,
   ) {}
 
   async ask(input: AskRequestDto, userId?: string): Promise<AskResponseDto> {
@@ -40,63 +40,61 @@ export class AskService {
      */
     const conversation = await this.resolveConversation(
       input.conversationId,
-      userId,
+      userId?.trim() || DEFAULT_USER_ID,
     );
-    /**
-     * Create the new prompt
-     */
-    await this.messagesService.create({
-      content: input.prompt,
-      conversationId: conversation.id,
-      role: MessageRole.User,
-    });
+    if (this.activeConversations.has(conversation.id)) {
+      throw new ConflictException(
+        'A turn is already running for this conversation.',
+      );
+    }
+    this.activeConversations.add(conversation.id);
 
-    /**
-     * Consolidate the conversation with all messages
-     */
-    const messageHistory = await this.messagesService.findByConversationId(
-      conversation.id,
-    );
+    try {
+      /**
+       * Create the new prompt
+       */
+      await this.messagesService.create({
+        content: input.prompt,
+        conversationId: conversation.id,
+        role: MessageRole.User,
+      });
 
-    const turnResult = await this.turnRunnerService.run({
-      messages: this.mapMessagesForLlm(messageHistory),
-      systemPrompt: conversation.systemPrompt ?? ASK_SYSTEM_PROMPT,
-      tools: toolDefinitions,
-    });
-    await this.persistGeneratedMessages(
-      conversation.id,
-      turnResult.generatedMessages,
-    );
+      /**
+       * Consolidate the conversation with all messages
+       */
+      const messageHistory = await this.messagesService.findByConversationId(
+        conversation.id,
+      );
 
-    return {
-      content: turnResult.content,
-      conversationId: conversation.id,
-    };
-  }
-
-  private mapMessagesForLlm(messages: Message[]): LlmMessage[] {
-    return messages.map((message) => {
-      const metadata = this.readMetadata(message.metadata);
-      const toolName = this.readString(metadata.toolName);
-      const toolUseId = this.readString(metadata.toolUseId);
+      const turnResult = await this.turnRunnerService.run({
+        messages: messageHistory.map(toLlmMessage),
+        systemPrompt: conversation.systemPrompt ?? ASK_SYSTEM_PROMPT,
+        tools: this.toolRegistry.definitions,
+      });
+      await this.messagesService.createMany(
+        turnResult.generatedMessages.map((message) =>
+          toStoredMessage(conversation.id, message),
+        ),
+      );
 
       return {
-        arguments: this.readArguments(metadata.arguments),
-        content: message.content,
-        role: message.role,
-        toolName,
-        toolUseId,
+        content: turnResult.content,
+        conversationId: conversation.id,
       };
-    });
+    } finally {
+      this.activeConversations.delete(conversation.id);
+    }
   }
 
   private async resolveConversation(
     conversationId: string | undefined,
-    userId: string | undefined,
+    userId: string,
   ) {
     if (conversationId !== undefined) {
-      const conversation =
-        await this.conversationsService.findById(conversationId);
+      const conversation = await this.conversationsService.findByIdAndUserId(
+        conversationId,
+        userId,
+      );
 
       if (conversation === null) {
         throw new NotFoundException(
@@ -109,78 +107,7 @@ export class AskService {
 
     return this.conversationsService.create({
       systemPrompt: ASK_SYSTEM_PROMPT,
-      userId: userId?.trim() || DEFAULT_USER_ID,
+      userId,
     });
-  }
-
-  private async persistGeneratedMessages(
-    conversationId: string,
-    messages: TurnRunnerGeneratedMessage[],
-  ): Promise<void> {
-    for (const message of messages) {
-      await this.messagesService.create({
-        content: message.content,
-        conversationId,
-        metadata: message.metadata ?? null,
-        role: this.mapRole(message.role),
-      });
-    }
-  }
-
-  private mapRole(role: LlmMessage['role']): MessageRole {
-    switch (role) {
-      case 'assistant':
-        return MessageRole.Assistant;
-      case 'tool':
-        return MessageRole.Tool;
-      case 'user':
-        return MessageRole.User;
-    }
-  }
-
-  private readArguments(
-    value: unknown,
-  ): Record<string, unknown> | null | undefined {
-    if (value === undefined) {
-      return undefined;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      return null;
-    }
-
-    return value as Record<string, unknown>;
-  }
-
-  private readMetadata(value: unknown): Record<string, unknown> {
-    if (value === null || value === undefined) {
-      return {};
-    }
-
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      return {};
-    }
-
-    return value as Record<string, unknown>;
-  }
-
-  private readString(value: unknown): string | null | undefined {
-    if (value === undefined) {
-      return undefined;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    if (typeof value !== 'string') {
-      return null;
-    }
-
-    return value;
   }
 }

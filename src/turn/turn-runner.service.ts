@@ -1,20 +1,23 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 
-import type { LlmMessage } from '../llm/llm-gateway.interface';
+import type {
+  LlmGateway,
+  LlmMessage,
+  GeneratedMessage,
+} from '../llm/llm-gateway.interface';
 import type { ToolDefinition } from '../tools/tool-definition.interface';
 
-import { LlmPlanner } from '../planner/llm-planner';
+import { LLM_GATEWAY } from '../llm/llm.constants';
 import { ToolExecutorService } from '../tools/tool-executor.service';
 
 const DEFAULT_MAX_ITERATIONS = 5;
-
-export interface TurnRunnerGeneratedMessage extends LlmMessage {
-  metadata?: Record<string, unknown> | null;
-}
+const DEFAULT_MAX_LLM_CALLS = 5;
+const DEFAULT_MAX_TOOL_CALLS = 3;
 
 export interface TurnRunnerInput {
   messages: LlmMessage[];
@@ -24,7 +27,7 @@ export interface TurnRunnerInput {
 
 export interface TurnRunnerOutput {
   content: string;
-  generatedMessages: TurnRunnerGeneratedMessage[];
+  generatedMessages: GeneratedMessage[];
 }
 
 @Injectable()
@@ -32,20 +35,37 @@ export class TurnRunnerService {
   private readonly logger = new Logger(TurnRunnerService.name);
 
   private readonly maxIterations = DEFAULT_MAX_ITERATIONS;
+  private readonly maxLlmCalls = DEFAULT_MAX_LLM_CALLS;
+  private readonly maxToolCalls = DEFAULT_MAX_TOOL_CALLS;
 
   constructor(
-    private readonly planner: LlmPlanner,
+    @Inject(LLM_GATEWAY)
+    private readonly llmGateway: LlmGateway,
     private readonly toolExecutorService: ToolExecutorService,
   ) {}
 
   async run(input: TurnRunnerInput): Promise<TurnRunnerOutput> {
     const workingMessages = [...input.messages];
-    const generatedMessages: TurnRunnerGeneratedMessage[] = [];
+    const generatedMessages: GeneratedMessage[] = [];
+    let llmCalls = 0;
+    let toolCalls = 0;
 
     for (let iteration = 1; iteration <= this.maxIterations; iteration += 1) {
-      const decision = await this.planner.decide({
-        messages: workingMessages,
-        systemPrompt: input.systemPrompt,
+      if (llmCalls >= this.maxLlmCalls) {
+        this.logger.warn(
+          `turn:max_llm_calls_reached limit=${this.maxLlmCalls} iteration=${iteration}`,
+        );
+
+        throw new InternalServerErrorException(
+          `Planner exceeded the max LLM call limit (${this.maxLlmCalls}) for the current turn.`,
+        );
+      }
+
+      llmCalls += 1;
+
+      const decision = await this.llmGateway.generateAnswer({
+        messages: [...workingMessages],
+        system: input.systemPrompt,
         tools: input.tools,
       });
 
@@ -56,12 +76,17 @@ export class TurnRunnerService {
       );
 
       if (decision.type === 'final_answer') {
-        const finalAnswerMessage: TurnRunnerGeneratedMessage = {
+        const finalAnswerMessage: GeneratedMessage = {
           content: decision.content,
           role: 'assistant',
+          type: 'text',
         };
 
         generatedMessages.push(finalAnswerMessage);
+
+        this.logger.log(
+          `turn:completed outcome=final_answer iterations=${iteration} llmCalls=${llmCalls} toolCalls=${toolCalls}`,
+        );
 
         return {
           content: decision.content,
@@ -69,15 +94,11 @@ export class TurnRunnerService {
         };
       }
 
-      const assistantToolCallMessage: TurnRunnerGeneratedMessage = {
+      const assistantToolCallMessage: GeneratedMessage = {
         arguments: decision.arguments,
         content: decision.content,
-        metadata: {
-          arguments: decision.arguments,
-          toolName: decision.toolName,
-          toolUseId: decision.toolUseId,
-        },
         role: 'assistant',
+        type: 'tool_call',
         toolName: decision.toolName,
         toolUseId: decision.toolUseId,
       };
@@ -85,25 +106,42 @@ export class TurnRunnerService {
       workingMessages.push(assistantToolCallMessage);
       generatedMessages.push(assistantToolCallMessage);
 
-      const executionResult = this.toolExecutorService.execute(
+      if (toolCalls >= this.maxToolCalls) {
+        this.logger.warn(
+          `turn:max_tool_calls_reached limit=${this.maxToolCalls} iteration=${iteration}`,
+        );
+
+        throw new InternalServerErrorException(
+          `Planner exceeded the max tool call limit (${this.maxToolCalls}) for the current turn.`,
+        );
+      }
+
+      toolCalls += 1;
+
+      this.logger.log(
+        `turn:tool_execution_start iteration=${iteration} toolName=${decision.toolName} attempt=1`,
+      );
+
+      const executionResult = await this.toolExecutorService.execute(
         decision.toolName,
         decision.arguments,
       );
 
-      this.logger.log(
-        `turn:tool_executed iteration=${iteration} toolName=${executionResult.toolName}`,
-      );
+      if (executionResult.success) {
+        this.logger.log(
+          `turn:tool_execution_success iteration=${iteration} toolName=${executionResult.toolName} attempt=${executionResult.attempt} durationMs=${executionResult.durationMs}`,
+        );
+      } else {
+        this.logger.warn(
+          `turn:tool_execution_failure iteration=${iteration} toolName=${executionResult.toolName} attempt=${executionResult.attempt} durationMs=${executionResult.durationMs} reason=${executionResult.reason}`,
+        );
+      }
 
-      const toolResultMessage: TurnRunnerGeneratedMessage = {
-        content: JSON.stringify(executionResult.result),
-        metadata: {
-          result: executionResult.result,
-          toolName: executionResult.toolName,
-          toolUseId: decision.toolUseId,
-        },
+      const toolResultMessage: GeneratedMessage = {
+        type: 'tool_result',
         role: 'tool',
-        toolName: executionResult.toolName,
         toolUseId: decision.toolUseId,
+        result: executionResult,
       };
 
       workingMessages.push(toolResultMessage);
