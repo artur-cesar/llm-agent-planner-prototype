@@ -55,10 +55,12 @@ describe('AskService', () => {
 
         return Promise.resolve(conversation as never);
       }),
-      findById: jest.fn((id: string) => {
+      findByIdAndUserId: jest.fn((id: string, userId: string) => {
         return Promise.resolve(
-          (storedConversations.find((conversation) => conversation.id === id) ??
-            null) as never,
+          (storedConversations.find(
+            (conversation) =>
+              conversation.id === id && conversation.userId === userId,
+          ) ?? null) as never,
         );
       }),
     } as unknown as jest.Mocked<ConversationsService>;
@@ -296,6 +298,59 @@ describe('AskService', () => {
     expect(storedMessages[5].content).toBe('Order 123 is currently PAID.');
   });
 
+  it('should reject another user before reading or writing messages', async () => {
+    storedConversations.push({
+      id: 'private-conversation',
+      userId: 'user-A',
+      systemPrompt: null,
+    });
+
+    await expect(
+      askService.ask(
+        { conversationId: 'private-conversation', prompt: 'hello world' },
+        'user-B',
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(conversationsService.findByIdAndUserId.mock.calls.at(-1)).toEqual([
+      'private-conversation',
+      'user-B',
+    ]);
+    expect(messagesService.create.mock.calls).toHaveLength(0);
+    expect(messagesService.findByConversationId.mock.calls).toHaveLength(0);
+    expect(generateAnswer).not.toHaveBeenCalled();
+  });
+
+  it('should normalize the owner when creating and continuing a conversation', async () => {
+    generateAnswer.mockReturnValue({ type: 'final_answer', content: 'Hello.' });
+    const first = await askService.ask({ prompt: 'hello world' }, ' user-123 ');
+    await askService.ask(
+      { conversationId: first.conversationId, prompt: 'hello again' },
+      ' user-123 ',
+    );
+
+    expect(storedConversations[0].userId).toBe('user-123');
+    expect(conversationsService.findByIdAndUserId.mock.calls.at(-1)).toEqual([
+      first.conversationId,
+      'user-123',
+    ]);
+  });
+
+  it('should preserve anonymous conversation continuity', async () => {
+    generateAnswer.mockReturnValue({ type: 'final_answer', content: 'Hello.' });
+    const first = await askService.ask({ prompt: 'hello world' });
+    await askService.ask(
+      { conversationId: first.conversationId, prompt: 'hello again' },
+      '   ',
+    );
+
+    expect(storedConversations[0].userId).toBe('anonymous-user');
+    expect(conversationsService.findByIdAndUserId.mock.calls.at(-1)).toEqual([
+      first.conversationId,
+      'anonymous-user',
+    ]);
+  });
+
   it('should fail when the conversation does not exist', async () => {
     await expect(
       askService.ask({
@@ -303,5 +358,7 @@ describe('AskService', () => {
         prompt: 'hello world',
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
+    expect(messagesService.create.mock.calls).toHaveLength(0);
+    expect(messagesService.findByConversationId.mock.calls).toHaveLength(0);
   });
 });

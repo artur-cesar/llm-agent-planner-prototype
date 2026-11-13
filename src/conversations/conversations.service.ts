@@ -21,7 +21,10 @@ export class ConversationsService {
     return this.conversationsRepository.save(conversation);
   }
 
-  async findById(id: string): Promise<Conversation | null> {
-    return this.conversationsRepository.findOne({ where: { id } });
+  async findByIdAndUserId(
+    id: string,
+    userId: string,
+  ): Promise<Conversation | null> {
+    return this.conversationsRepository.findOne({ where: { id, userId } });
   }
 }

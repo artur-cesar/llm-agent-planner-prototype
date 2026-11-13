@@ -223,3 +223,7 @@ The architecture is intentionally simple, explicit, and extensible.
 ## LLM integration reference
 
 `LlmGateway` defines the provider contract. The Anthropic gateway and factory are the reference implementation for adding another provider. Tests use programmed responses or a mocked Anthropic client and do not call the external API.
+
+## Conversation ownership
+
+`x-user-id` is a simulated identity, not authentication. Conversations are retrieved by both `conversationId` and the trimmed user identifier. Reuse the same identifier on follow-up requests. An omitted or blank header uses `anonymous-user`. A missing conversation or one owned by another user returns 404 before reading or writing messages.

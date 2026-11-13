@@ -40,7 +40,7 @@ export class AskService {
      */
     const conversation = await this.resolveConversation(
       input.conversationId,
-      userId,
+      userId?.trim() || DEFAULT_USER_ID,
     );
     /**
      * Create the new prompt
@@ -92,11 +92,13 @@ export class AskService {
 
   private async resolveConversation(
     conversationId: string | undefined,
-    userId: string | undefined,
+    userId: string,
   ) {
     if (conversationId !== undefined) {
-      const conversation =
-        await this.conversationsService.findById(conversationId);
+      const conversation = await this.conversationsService.findByIdAndUserId(
+        conversationId,
+        userId,
+      );
 
       if (conversation === null) {
         throw new NotFoundException(
@@ -109,7 +111,7 @@ export class AskService {
 
     return this.conversationsService.create({
       systemPrompt: ASK_SYSTEM_PROMPT,
-      userId: userId?.trim() || DEFAULT_USER_ID,
+      userId,
     });
   }
 

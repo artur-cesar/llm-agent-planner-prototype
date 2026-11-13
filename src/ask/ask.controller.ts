@@ -26,7 +26,7 @@ export class AskController {
     name: 'x-user-id',
     required: false,
     description:
-      'Optional simulated user identifier used when creating a new conversation.',
+      'Optional simulated user identifier used to create and access conversations. Reuse the same identifier for follow-up turns; omitted or blank values use anonymous-user. This header is not authentication.',
     example: 'user-123',
   })
   @ApiBody({ type: AskRequestDto })
