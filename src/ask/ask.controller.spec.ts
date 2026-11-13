@@ -15,14 +15,14 @@ describe('AskController', () => {
 
   it('should return a generated answer', async () => {
     askService.ask.mockResolvedValue({
-      content: 'Fake LLM response: test',
+      content: 'Test response',
       conversationId: 'conversation-id',
     });
 
     await expect(
       askController.ask({ prompt: 'test' }, 'user-id'),
     ).resolves.toEqual({
-      content: 'Fake LLM response: test',
+      content: 'Test response',
       conversationId: 'conversation-id',
     });
     expect(askService.ask.mock.calls).toEqual([

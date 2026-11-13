@@ -1,22 +1,18 @@
 import type { LlmProviderFactory } from './llm-provider-factory.interface';
 
-import {
-  LLM_PROVIDER_ANTHROPIC,
-  LLM_PROVIDER_FAKE,
-  LlmProvider,
-} from './llm.constants';
+import { LLM_PROVIDER_ANTHROPIC, LlmProvider } from './llm.constants';
 
 export function getLlmProvider(
   env: NodeJS.ProcessEnv = process.env,
 ): LlmProvider {
-  const provider = env.LLM_PROVIDER ?? LLM_PROVIDER_FAKE;
+  const provider = env.LLM_PROVIDER ?? LLM_PROVIDER_ANTHROPIC;
 
-  if (provider === LLM_PROVIDER_FAKE || provider === LLM_PROVIDER_ANTHROPIC) {
+  if (provider === LLM_PROVIDER_ANTHROPIC) {
     return provider;
   }
 
   throw new Error(
-    `Unsupported LLM_PROVIDER "${provider}". Expected "fake" or "anthropic".`,
+    `Unsupported LLM_PROVIDER "${provider}". Expected "anthropic".`,
   );
 }
 

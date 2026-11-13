@@ -56,6 +56,9 @@ Specs live under the `spec/` directory and guide the evolution of the system.
 # install dependencies
 npm install
 
+# configure ANTHROPIC_API_KEY and ANTHROPIC_MODEL in your environment
+# LLM_PROVIDER defaults to anthropic; no fake provider is available
+
 # run database (docker)
 docker-compose up -d
 
@@ -216,3 +219,7 @@ This is the foundation for:
 - real-world LLM orchestration systems
 
 The architecture is intentionally simple, explicit, and extensible.
+
+## LLM integration reference
+
+`LlmGateway` defines the provider contract. The Anthropic gateway and factory are the reference implementation for adding another provider. Tests use programmed responses or a mocked Anthropic client and do not call the external API.

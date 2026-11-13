@@ -1,12 +1,13 @@
 import { NotFoundException } from '@nestjs/common';
 
+import type { LlmGateway } from '../llm/llm-gateway.interface';
+
 import { ConversationsService } from '../conversations/conversations.service';
 import { CreateConversationInput } from '../conversations/dto/create-conversation.input';
 import { CreateMessageInput } from '../conversations/dto/create-message.input';
 import { Message } from '../conversations/entities/message.entity';
 import { MessageRole } from '../conversations/message-role.enum';
 import { MessagesService } from '../conversations/messages.service';
-import { FakeLlmGateway } from '../llm/fake/fake-llm.gateway';
 import { OrderRepository } from '../order/order.repository';
 import { LlmPlanner } from '../planner/llm-planner';
 import { ToolExecutorService } from '../tools/tool-executor.service';
@@ -27,6 +28,15 @@ describe('AskService', () => {
   let storedConversations: StoredConversation[];
   let storedMessages: Message[];
   let messageCounter: number;
+  let generateAnswer: jest.MockedFunction<LlmGateway['generateAnswer']>;
+
+  const toolCall = (toolName: string) => ({
+    type: 'tool_call' as const,
+    arguments: { orderId: '123' },
+    content: `Checking ${toolName} for order 123.`,
+    toolName,
+    toolUseId: `test-tool-use-${toolName}-123`,
+  });
 
   beforeEach(() => {
     storedConversations = [];
@@ -86,7 +96,8 @@ describe('AskService', () => {
       }),
     } as unknown as jest.Mocked<MessagesService>;
 
-    const llmPlanner = new LlmPlanner(new FakeLlmGateway());
+    generateAnswer = jest.fn();
+    const llmPlanner = new LlmPlanner({ generateAnswer });
     const turnRunnerService = new TurnRunnerService(
       llmPlanner,
       new ToolExecutorService(new OrderRepository()),
@@ -100,10 +111,14 @@ describe('AskService', () => {
   });
 
   it('should persist a direct answer in a new conversation', async () => {
+    generateAnswer.mockReturnValueOnce({
+      type: 'final_answer',
+      content: 'Hello world.',
+    });
     await expect(
       askService.ask({ prompt: 'hello world' }, 'user-123'),
     ).resolves.toEqual({
-      content: 'Fake LLM response: hello world',
+      content: 'Hello world.',
       conversationId: 'conversation-1',
     });
 
@@ -121,11 +136,17 @@ describe('AskService', () => {
     ]);
     expect(storedMessages.map((message) => message.content)).toEqual([
       'hello world',
-      'Fake LLM response: hello world',
+      'Hello world.',
     ]);
   });
 
   it('should execute a tool call and persist the intermediate tool messages', async () => {
+    generateAnswer
+      .mockReturnValueOnce(toolCall('getOrderStatus'))
+      .mockReturnValueOnce({
+        type: 'final_answer',
+        content: 'Order 123 is currently PAID.',
+      });
     await expect(
       askService.ask(
         { prompt: 'What is the status of order 123?' },
@@ -145,7 +166,7 @@ describe('AskService', () => {
     expect(storedMessages[1].metadata).toEqual({
       arguments: { orderId: '123' },
       toolName: 'getOrderStatus',
-      toolUseId: 'fake-tool-use-getOrderStatus-123',
+      toolUseId: 'test-tool-use-getOrderStatus-123',
     });
     expect(JSON.parse(storedMessages[2].content)).toMatchObject({
       arguments: { orderId: '123' },
@@ -164,11 +185,19 @@ describe('AskService', () => {
         type: 'tool_success',
       },
       toolName: 'getOrderStatus',
-      toolUseId: 'fake-tool-use-getOrderStatus-123',
+      toolUseId: 'test-tool-use-getOrderStatus-123',
     });
   });
 
   it('should execute multiple tool calls in the same turn', async () => {
+    generateAnswer
+      .mockReturnValueOnce(toolCall('getOrderStatus'))
+      .mockReturnValueOnce(toolCall('getOrderItems'))
+      .mockReturnValueOnce({
+        type: 'final_answer',
+        content:
+          'Order 123 is currently PAID. Order 123 contains: Keyboard, Mouse.',
+      });
     await expect(
       askService.ask(
         { prompt: 'What is the status and items of order 123?' },
@@ -191,12 +220,12 @@ describe('AskService', () => {
     expect(storedMessages[1].metadata).toEqual({
       arguments: { orderId: '123' },
       toolName: 'getOrderStatus',
-      toolUseId: 'fake-tool-use-getOrderStatus-123',
+      toolUseId: 'test-tool-use-getOrderStatus-123',
     });
     expect(storedMessages[3].metadata).toEqual({
       arguments: { orderId: '123' },
       toolName: 'getOrderItems',
-      toolUseId: 'fake-tool-use-getOrderItems-123',
+      toolUseId: 'test-tool-use-getOrderItems-123',
     });
     expect(storedMessages[5].content).toBe(
       'Order 123 is currently PAID. Order 123 contains: Keyboard, Mouse.',
@@ -204,6 +233,16 @@ describe('AskService', () => {
   });
 
   it('should reuse persisted context for clarification-based follow-up turns', async () => {
+    generateAnswer
+      .mockReturnValueOnce({
+        type: 'final_answer',
+        content: 'I can help with that. Which order ID should I check for you?',
+      })
+      .mockReturnValueOnce(toolCall('getOrderStatus'))
+      .mockReturnValueOnce({
+        type: 'final_answer',
+        content: 'Order 123 is currently PAID.',
+      });
     const firstResponse = await askService.ask(
       { prompt: 'What is the status of my order?' },
       'user-123',
@@ -222,6 +261,20 @@ describe('AskService', () => {
       conversationId: firstResponse.conversationId,
     });
 
+    expect(generateAnswer.mock.calls[1][0].messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'user',
+          content: 'What is the status of my order?',
+        }),
+        expect.objectContaining({
+          role: 'assistant',
+          content:
+            'I can help with that. Which order ID should I check for you?',
+        }),
+        expect.objectContaining({ role: 'user', content: '123' }),
+      ]),
+    );
     expect(messagesService.findByConversationId.mock.calls).toContainEqual([
       firstResponse.conversationId,
     ]);
